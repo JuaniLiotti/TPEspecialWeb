@@ -1,3 +1,3 @@
-module tpespecialweb
+module main.go
 
 go 1.27.0
