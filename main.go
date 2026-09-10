@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
+	"path/filepath"
 	"tpespecialweb/db/generated"
 
 	_ "github.com/lib/pq"
@@ -35,6 +37,7 @@ func main() {
 	if err != nil {
 		log.Fatal("Error al conectar a la base de datos:", err)
 	}
+	db.SetMaxOpenConns(10)
 	defer db.Close()
 
 	if err := db.Ping(); err != nil {
