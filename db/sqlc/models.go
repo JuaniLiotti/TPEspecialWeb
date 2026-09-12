@@ -4,17 +4,13 @@
 
 package db
 
-import (
-	"database/sql"
-)
-
 type Producto struct {
-	ID          int32          `json:"id"`
-	Nombre      string         `json:"nombre"`
-	Descripcion sql.NullString `json:"descripcion"`
-	Categoria   sql.NullString `json:"categoria"`
-	Color       sql.NullString `json:"color"`
-	Precio      sql.NullInt32  `json:"precio"`
+	ID          int32  `json:"id"`
+	Nombre      string `json:"nombre"`
+	Descripcion string `json:"descripcion"`
+	Categoria   string `json:"categoria"`
+	Color       string `json:"color"`
+	Precio      int32  `json:"precio"`
 }
 
 type Usuario struct {

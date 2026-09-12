@@ -1,1 +1,10 @@
+# Binarios compilados
 TPEspecialWeb
+tp2web
+*.exe
+
+# Configuraciones del editor
+.vscode/
+
+# Archivos de entorno
+.env

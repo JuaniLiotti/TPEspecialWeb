@@ -7,7 +7,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 )
 
 const createProducto = `-- name: CreateProducto :one
@@ -17,11 +16,11 @@ RETURNING id, nombre, descripcion, categoria, color, precio
 `
 
 type CreateProductoParams struct {
-	Nombre      string         `json:"nombre"`
-	Descripcion sql.NullString `json:"descripcion"`
-	Categoria   sql.NullString `json:"categoria"`
-	Color       sql.NullString `json:"color"`
-	Precio      sql.NullInt32  `json:"precio"`
+	Nombre      string `json:"nombre"`
+	Descripcion string `json:"descripcion"`
+	Categoria   string `json:"categoria"`
+	Color       string `json:"color"`
+	Precio      int32  `json:"precio"`
 }
 
 func (q *Queries) CreateProducto(ctx context.Context, arg CreateProductoParams) (Producto, error) {
@@ -60,11 +59,11 @@ FROM producto
 `
 
 type GetAllProductosRow struct {
-	Nombre      string         `json:"nombre"`
-	Descripcion sql.NullString `json:"descripcion"`
-	Categoria   sql.NullString `json:"categoria"`
-	Color       sql.NullString `json:"color"`
-	Precio      sql.NullInt32  `json:"precio"`
+	Nombre      string `json:"nombre"`
+	Descripcion string `json:"descripcion"`
+	Categoria   string `json:"categoria"`
+	Color       string `json:"color"`
+	Precio      int32  `json:"precio"`
 }
 
 func (q *Queries) GetAllProductos(ctx context.Context) ([]GetAllProductosRow, error) {
@@ -103,11 +102,11 @@ WHERE id = $1
 `
 
 type GetProductoRow struct {
-	Nombre      string         `json:"nombre"`
-	Descripcion sql.NullString `json:"descripcion"`
-	Categoria   sql.NullString `json:"categoria"`
-	Color       sql.NullString `json:"color"`
-	Precio      sql.NullInt32  `json:"precio"`
+	Nombre      string `json:"nombre"`
+	Descripcion string `json:"descripcion"`
+	Categoria   string `json:"categoria"`
+	Color       string `json:"color"`
+	Precio      int32  `json:"precio"`
 }
 
 func (q *Queries) GetProducto(ctx context.Context, id int32) (GetProductoRow, error) {
@@ -131,20 +130,20 @@ RETURNING nombre, descripcion, categoria, color, precio
 `
 
 type UpdateProductoParams struct {
-	ID          int32          `json:"id"`
-	Nombre      string         `json:"nombre"`
-	Descripcion sql.NullString `json:"descripcion"`
-	Categoria   sql.NullString `json:"categoria"`
-	Color       sql.NullString `json:"color"`
-	Precio      sql.NullInt32  `json:"precio"`
+	ID          int32  `json:"id"`
+	Nombre      string `json:"nombre"`
+	Descripcion string `json:"descripcion"`
+	Categoria   string `json:"categoria"`
+	Color       string `json:"color"`
+	Precio      int32  `json:"precio"`
 }
 
 type UpdateProductoRow struct {
-	Nombre      string         `json:"nombre"`
-	Descripcion sql.NullString `json:"descripcion"`
-	Categoria   sql.NullString `json:"categoria"`
-	Color       sql.NullString `json:"color"`
-	Precio      sql.NullInt32  `json:"precio"`
+	Nombre      string `json:"nombre"`
+	Descripcion string `json:"descripcion"`
+	Categoria   string `json:"categoria"`
+	Color       string `json:"color"`
+	Precio      int32  `json:"precio"`
 }
 
 func (q *Queries) UpdateProducto(ctx context.Context, arg UpdateProductoParams) (UpdateProductoRow, error) {

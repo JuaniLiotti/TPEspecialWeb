@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
-	"tpespecialweb/db/generated"
+	db "tpespecialweb/db/sqlc"
 
 	_ "github.com/lib/pq"
 )
@@ -33,20 +33,20 @@ func pathExists(urlPath string, staticDir string) bool {
 
 func main() {
 	// Conexión a la base de datos PostgreSQL
-	db, err := sql.Open("postgres", "postgres://postgres:secreta@localhost:5432/italpiel_db?sslmode=disable")
+	conn, err := sql.Open("postgres", "postgres://postgres:secreta@localhost:5432/italpiel_db?sslmode=disable")
 	if err != nil {
 		log.Fatal("Error al conectar a la base de datos:", err)
 	}
-	db.SetMaxOpenConns(10)
-	defer db.Close()
+	conn.SetMaxOpenConns(10)
+	defer conn.Close()
 
-	if err := db.Ping(); err != nil {
+	if err := conn.Ping(); err != nil {
 		log.Fatal("Error al hacer ping a la base de datos:", err)
 	}
 
 	fmt.Println("Conexión a la BBDD exitosa")
 
-	queries := generated.New(db)
+	db.New(conn)
 
 	fmt.Println("BBDD Lista para operar")
 	// Fin conexión BBDD

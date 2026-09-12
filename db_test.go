@@ -6,43 +6,43 @@ import (
 	"fmt"
 	"log"
 	"testing"
-	"tpespecialweb/db/generated"
 
-	sqlc "main/db/sqlc"
+	db "tpespecialweb/db/sqlc"
+	sqlc "tpespecialweb/db/sqlc"
 
 	_ "github.com/lib/pq"
 )
 
-func testqueries_CRUD(t *testing.T) {
-	db, err := sql.Open("postgres", "postgres://postgres:secreta@localhost:5432/italpiel_db?sslmode=disable")
+func TestQueries_CRUD(t *testing.T) {
+	conn, err := sql.Open("postgres", "postgres://postgres:secreta@localhost:5432/italpiel_db?sslmode=disable")
 	if err != nil {
 		log.Fatal("Error al conectar a la base de datos:", err)
 	}
-	db.SetMaxOpenConns(10)
-	defer db.Close()
+	conn.SetMaxOpenConns(10)
+	defer conn.Close()
 
-	if err := db.Ping(); err != nil {
+	if err := conn.Ping(); err != nil {
 		log.Fatal("Error al hacer ping a la base de datos:", err)
 	}
 
 	fmt.Println("Conexión a la BBDD exitosa")
 
-	queries := generated.New(db)
+	queries := db.New(conn)
 	ctx := context.Background()
 
 	fmt.Println("BBDD Lista para operar")
 
 	// tests para usuario
-	var userID int64
+	var userID int32
 	nombreUsuarioTest := "usuario test"
 	emailTest := "test@test.com"
 	passwordTest := "contra test"
 
 	t.Run("CreateUsuario", func(t *testing.T) {
 		user, err := queries.CreateUsuario(ctx, sqlc.CreateUsuarioParams{
-			nombre:   nombreUsuarioTest,
-			email:    emailTest,
-			password: passwordTest,
+			Nombre:   nombreUsuarioTest,
+			Email:    emailTest,
+			Password: passwordTest,
 		})
 		if err != nil {
 			t.Fatalf("Error al crear usuario %v", err)
@@ -55,7 +55,7 @@ func testqueries_CRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error al buscar usuario %v", err)
 		}
-		if user.name != nombreUsuarioTest {
+		if user.Nombre != nombreUsuarioTest {
 			t.Errorf("El nombre no es el que se ingreso, se esperaba %s y se obtuvo %s", nombreUsuarioTest, user.Nombre)
 		}
 	})
@@ -87,7 +87,7 @@ func testqueries_CRUD(t *testing.T) {
 	})
 
 	t.Run("DeleteUsuario", func(t *testing.T) {
-		_, err := queries.DeleteUsuario(ctx, userID)
+		err := queries.DeleteUsuario(ctx, userID)
 		if err != nil {
 			t.Errorf("Error al eliminar usuario %v", err)
 		}
@@ -103,7 +103,7 @@ func testqueries_CRUD(t *testing.T) {
 	descripcionTest := "descrpicion test"
 	categoriaTest := "categoria test"
 	colorTest := "color test"
-	precioTest := 1234
+	precioTest := int32(1234)
 
 	t.Run("CreateProducto", func(t *testing.T) {
 		prod, err := queries.CreateProducto(ctx, sqlc.CreateProductoParams{
@@ -124,7 +124,7 @@ func testqueries_CRUD(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Error al buscar producto %v", err)
 		}
-		if prod.name != nombreProductoTest {
+		if prod.Nombre != nombreProductoTest {
 			t.Errorf("El nombre no es el que se ingreso, se esperaba %s y se obtuvo %s", nombreProductoTest, prod.Nombre)
 		}
 	})
@@ -149,18 +149,18 @@ func testqueries_CRUD(t *testing.T) {
 			Descripcion: descripcionUpdate,
 			Categoria:   categoriaUpdate,
 			Color:       colorUpdate,
-			Precio:      precioUpdate,
+			Precio:      int32(precioUpdate),
 		})
 		if err != nil {
 			t.Errorf("Error al actualizar producto %v", err)
 		}
-		if prod.Nombre != nombreProductoUpdate || prod.Descripcion != descripcionUpdate || prod.Categoria != categoriaUpdate || prod.Color != colorUpdate || prod.Precio != precioUpdate {
+		if prod.Nombre != nombreProductoUpdate || prod.Descripcion != descripcionUpdate || prod.Categoria != categoriaUpdate || prod.Color != colorUpdate || prod.Precio != int32(precioUpdate) {
 			t.Errorf("no se actualizaron los datos")
 		}
 	})
 
-	t.Run("Deleteproducto", func(t *testing.T) {
-		_, err := queries.DeleteUsuario(ctx, prodID)
+	t.Run("DeleteProducto", func(t *testing.T) {
+		err := queries.DeleteProducto(ctx, prodID)
 		if err != nil {
 			t.Errorf("Error al eliminar producto %v", err)
 		}
