@@ -31,6 +31,9 @@ Ejecutar todos los comandos previos al test:
 Ejecutar el test:
     - De manera automatizada ejecuta los tests que se encuentran en db_test.go (Crear, obtener uno, obtener todos, actualizar, eliminar)
 
+Limpiar BBDD post test: 
+    - A partir del comando:  docker rm -f -v $(CONTAINER_NAME) se eliminan los datos creados para la prueba, dejando la base de datos completamente vacía.
+
 ## Documentación:
 En db/schema se encuentran los esquemas de creación de las tablas:
 Este esquema representa una simplificación del dominio de la página, ya que contiene a los productos que serán exhibidos en la página, permitiendo guardar un ID, nombre de producto, descripción, categoría, color y precio. Y también a los usarios que tendrán la oportunidad de logearse, guardando ennla BBDD la id de usuario, el nombre, el mail y la clave de acceso. 
