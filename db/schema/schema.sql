@@ -1,10 +1,10 @@
 CREATE TABLE producto(
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(255) NOT NULL,
-    descripcion VARCHAR(255),
-    categoria VARCHAR(255),
-    color VARCHAR(255),
-    precio INTEGER
+    descripcion VARCHAR(255) NOT NULL,
+    categoria VARCHAR(255) NOT NULL,
+    color VARCHAR(255) NOT NULL,
+    precio INTEGER NOT NULL
 );
 
 CREATE TABLE usuario(
