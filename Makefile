@@ -1,17 +1,55 @@
 CONTAINER_NAME=postgres-tp2
 IMAGE_NAME=tp-postgres
-# Tarea principal, se ejecuta en este orden al ejecutar "make"
+
+# ==========================================
+# TAREAS PARA EL TP2 (Tests de Base de Datos)
+# ==========================================
 test: pre-test run-tests post-tests
 
-#Pre-tests:
-pre-test: run-sqlc build-app build-db-image clean-db start-db wait-db
-run-sqlc:
-	@echo "Generando código con sqlc..."
-	sqlc generate
+pre-test: run-sqlc build-db-image clean-db start-db wait-db
+run-tests:
+	@echo "Ejecutando los tests de la BBDD..."
+	go test -v ./...
+post-tests: clean-db
+
+
+# ==========================================
+# TAREAS PARA EL TP3 (Tests de la API)
+# ==========================================
+test-api: pre-test-api run-api-tests post-test-api
+
+pre-test-api: pre-test build-app start-app wait-app
 
 build-app:
 	@echo "Compilando el proyecto..."
-	go build ./...
+	go build -o api-server main.go
+
+start-app:
+	@echo "Levantando el servidor de la aplicación en segundo plano..."
+	./api-server & echo $$! > app.pid
+
+wait-app:
+	@echo "Esperando a que la API esté lista..."
+	sleep 3
+
+run-api-tests:
+	@echo "Ejecutando pruebas de los endpoints..."
+	chmod +x requests.sh
+	./requests.sh
+
+post-test-api: clean-app clean-db
+
+clean-app:
+	@echo "Cerrando el servidor de la aplicación..."
+	@if [ -f app.pid ]; then kill -9 $$(cat app.pid) && rm app.pid || true; fi
+
+
+# ==========================================
+# TAREAS COMPARTIDAS
+# ==========================================
+run-sqlc:
+	@echo "Generando código con sqlc..."
+	sqlc generate
 
 build-db-image:
 	@echo "Construyendo la imagen de la BBDD..."
@@ -28,12 +66,3 @@ start-db:
 wait-db: 
 	@echo "Esperando a que la BBDD esté lista..."
 	sleep 5
-
-# Ejecución de los tests:
-run-tests:
-	@echo "Ejecutando los tests..."
-	go test -v ./...
-
-post-tests: 
-	@echo "Limpiando basura (borrando contenedores y volúmenes)..."
-	docker rm -f -v $(CONTAINER_NAME)

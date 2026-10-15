@@ -2,15 +2,15 @@ package main
 
 import (
 	"database/sql"
-	"encoding/json"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
-	"strings"
+
 	db "tpespecialweb/db/sqlc"
+	"tpespecialweb/logic/productCRUD"
+	"tpespecialweb/logic/userCRUD"
 
 	_ "github.com/lib/pq"
 )
@@ -23,7 +23,7 @@ func pathExists(urlPath string, staticDir string) bool {
 		return false
 	}
 
-	// si la url es un directorio, tiene que checkear que haya un index
+	// si la url es un directorio, tiene que chequear que haya un index
 	if info.IsDir() {
 		indexPath := filepath.Join(path, "index.html")
 		if _, err := os.Stat(indexPath); os.IsNotExist(err) {
@@ -44,136 +44,6 @@ func loggingMiddleware(next http.Handler) http.Handler {
 	})
 }
 
-func GetProducts(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "application/json")
-
-	var listaProductos []db.GetAllProductosRow
-
-	mu.RLock()
-	listaProductos, err = db.GetAllProductos(ctx) // arreglar esto, tiene que pedir la lista de productos
-	mu.RUnlock()
-
-	// mandejar error
-
-	json.NewEncoder(w).Encode(listaProductos)
-}
-
-func GetProductById(w http.ResponseWriter, r *http.Request, idStr string) {
-
-	w.Header().Set("Content-Type", "application/json")
-
-	id, err := strconv.Atoi(idStr)
-	if err != nil || id <= 0 {
-		http.Error(w, "El ID debe ser un número entero válido mayor a cero", http.StatusBadRequest)
-		return
-	}
-
-	var productoEncontrado db.GetProductoRow
-
-	mu.RLock()
-	productoEncontrado, err = db.GetProducto(id) // tiene que pedir el producto dependiendo del id
-	mu.RUnlock()
-
-	// manejar error
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(productoEncontrado)
-}
-
-func CreateProducto(w http.ResponseWriter, r *http.Request) {
-	var nuevoProducto db.CreateProductoParams
-
-	err1 := json.NewDecoder(r.Body).Decode(&nuevoProducto)
-
-	if err1 != nil {
-		http.Error(w, err1.Error(), http.StatusBadRequest)
-		return
-	}
-
-	// validar entrada
-
-	mu.Lock()
-	err := db.CreateProducto(nuevoProducto) // hacer que ande
-	mu.Unlock()
-
-	// checkeo error
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(nuevoProducto)
-}
-
-func DeleteProductoById(w http.ResponseWriter, r *http.Request, idStr string) {
-	id, err := strconv.ParseInt(idStr, 10, 64)
-	if err != nil || id <= 0 {
-		http.Error(w, "El ID debe ser un número entero válido mayor a cero", http.StatusBadRequest)
-		return
-	}
-
-	mu.Lock()
-	defer mu.Unlock()
-
-	err2 := db.DeleteProducto(, id) // ya sabes
-
-	// manejar error
-
-	// Respuesta 204 sin cuerpo
-	w.WriteHeader(http.StatusNoContent)
-}
-
-func UpdateProductoById(w http.ResponseWriter, r *http.Request) {
-
-	w.Header().Set("Content-Type", "application/json")
-
-	var nuevoProducto db.UpdateProductoParams
-	err1 := json.NewDecoder(r.Body).Decode(&nuevoProducto)
-	
-	// validar
-	
-	mu.Lock()
-	defer mu.Unlock()
-
-	err2 := db.UpdateProducto(, nuevoProductom) // que ande
-
-	// manejar error
-
-	pActualizado.ID = id
-	slice[indexEncontrado] = pActualizado
-
-	w.WriteHeader(http.StatusOK)
-	json.NewEncoder(w).Encode(pActualizado)
-}
-
-func productsHandler(w http.ResponseWriter, r *http.Request) {
-	idStr := strings.TrimPrefix(r.URL.Path, "/products/")
-
-	switch r.Method {
-	case http.MethodGet:
-		if idStr == "" {
-			GetProducts(w, r)
-		} else {
-			GetProductById(w, r, idStr)
-		}
-	case http.MethodPost:
-		CreateProducto(w, r)
-	case http.MethodPut:
-		if idStr == "" {
-			http.Error(w, "Se requiere un ID para actualizar", http.StatusBadRequest)
-			return
-		}
-		UpdateProductoById(w, r)
-	case http.MethodDelete:
-		if idStr == "" {
-			http.Error(w, "Se requiere un ID para eliminar", http.StatusBadRequest)
-			return
-		}
-		DeleteProductoById(w, r, idStr)
-	default:
-		http.Error(w, "Método no permitido", http.StatusMethodNotAllowed)
-	}
-}
-
 func main() {
 	// Conexión a la base de datos PostgreSQL
 	conn, err := sql.Open("postgres", "postgres://postgres:secreta@localhost:5432/italpiel_db?sslmode=disable")
@@ -189,7 +59,10 @@ func main() {
 
 	fmt.Println("Conexión a la BBDD exitosa")
 
-	db.New(conn)
+	queries := db.New(conn)
+
+	prodHandler := productCRUD.NewProductHandler(queries)
+	userHandler := userCRUD.NewUserHandler(queries)
 
 	fmt.Println("BBDD Lista para operar")
 	// Fin conexión BBDD
@@ -213,10 +86,9 @@ func main() {
 		}
 	}))
 
-	//handler CRUD de productos
-	handlerBase := http.HandlerFunc(productsHandler)
-
-	http.Handle("/products/", loggingMiddleware(handlerBase))
+	// handler CRUD de productos
+	http.Handle("/products/", loggingMiddleware(http.HandlerFunc(prodHandler.ServeHTTP)))
+	http.Handle("/users/", loggingMiddleware(http.HandlerFunc(userHandler.ServeHTTP)))
 
 	fmt.Printf("Servidor escuchando en http://localhost%s\n", port)
 
