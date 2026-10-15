@@ -9,4 +9,4 @@ tp2web
 # Archivos de entorno
 .env
 
-.docs/
+.docs
