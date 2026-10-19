@@ -10,3 +10,6 @@ tp2web
 .env
 
 .docs/
+
+# Archivos sqlc autogenerados
+db/sqlc/
