@@ -1,15 +1,16 @@
 # Binarios compilados
 TPEspecialWeb
-tp2web
+api-server
 *.exe
+
+# Archivos temporales
+app.pid
 
 # Configuraciones del editor
 .vscode/
 
 # Archivos de entorno
 .env
-
-.docs/
 
 # Archivos sqlc autogenerados
 db/sqlc/
