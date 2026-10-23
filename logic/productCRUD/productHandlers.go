@@ -1,28 +1,50 @@
 package productCRUD
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
-
-	db "tpespecialweb/db/sqlc"
 )
 
-type ProductHandler struct {
-	Queries *db.Queries
+type Producto struct {
+	ID          int32  `json:"id"`
+	Nombre      string `json:"nombre"`
+	Descripcion string `json:"descripcion"`
+	Categoria   string `json:"categoria"`
+	Color       string `json:"color"`
+	Precio      int32  `json:"precio"`
 }
 
-func NewProductHandler(q *db.Queries) *ProductHandler {
-	return &ProductHandler{
-		Queries: q,
-	}
+type ProductoRequest struct {
+	Nombre      string `json:"nombre"`
+	Descripcion string `json:"descripcion"`
+	Categoria   string `json:"categoria"`
+	Color       string `json:"color"`
+	Precio      int32  `json:"precio"`
+}
+
+type ProductRepository interface {
+	Create(ctx context.Context, req ProductoRequest) (Producto, error)
+	GetByID(ctx context.Context, id int32) (Producto, error)
+	GetAll(ctx context.Context) ([]Producto, error)
+	Update(ctx context.Context, id int32, req ProductoRequest) (Producto, error)
+	Delete(ctx context.Context, id int32) error
+}
+
+type ProductHandler struct {
+	repo ProductRepository
+}
+
+func NewProductHandler(repo ProductRepository) *ProductHandler {
+	return &ProductHandler{repo: repo}
 }
 
 func (h *ProductHandler) GetProducts(w http.ResponseWriter, r *http.Request) {
 
-	listaProductos, err := h.Queries.GetAllProductos(r.Context())
+	listaProductos, err := h.repo.GetAll(r.Context())
 
 	if err != nil {
 		http.Error(w, "Error al obtener los productos", http.StatusInternalServerError)
@@ -42,7 +64,7 @@ func (h *ProductHandler) GetProductById(w http.ResponseWriter, r *http.Request, 
 		return
 	}
 
-	productoEncontrado, err := h.Queries.GetProducto(r.Context(), int32(id))
+	productoEncontrado, err := h.repo.GetByID(r.Context(), int32(id))
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -58,7 +80,7 @@ func (h *ProductHandler) GetProductById(w http.ResponseWriter, r *http.Request, 
 }
 
 func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
-	var nuevoProducto db.CreateProductoParams
+	var nuevoProducto ProductoRequest
 
 	err := json.NewDecoder(r.Body).Decode(&nuevoProducto)
 
@@ -72,7 +94,7 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	productoCreado, err := h.Queries.CreateProducto(r.Context(), nuevoProducto)
+	productoCreado, err := h.repo.Create(r.Context(), nuevoProducto)
 
 	if err != nil {
 		http.Error(w, "Error al guardar el producto", http.StatusInternalServerError)
@@ -93,7 +115,7 @@ func (h *ProductHandler) DeleteProductById(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err = h.Queries.DeleteProducto(r.Context(), int32(id))
+	err = h.repo.Delete(r.Context(), int32(id))
 
 	if err != nil {
 		http.Error(w, "Error al eliminar el producto", http.StatusInternalServerError)
@@ -112,21 +134,19 @@ func (h *ProductHandler) UpdateProductById(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	var pActualizar db.UpdateProductoParams
+	var pActualizar ProductoRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&pActualizar); err != nil {
 		http.Error(w, "Formato JSON inválido", http.StatusBadRequest)
 		return
 	}
 
-	pActualizar.ID = int32(id)
-
 	if pActualizar.Nombre == "" || pActualizar.Precio <= 0 {
 		http.Error(w, "El nombre no puede estar vacío y el precio debe ser mayor a cero", http.StatusBadRequest)
 		return
 	}
 
-	productoActualizado, err := h.Queries.UpdateProducto(r.Context(), pActualizar)
+	productoActualizado, err := h.repo.Update(r.Context(), int32(id), pActualizar)
 
 	if err != nil {
 		if err == sql.ErrNoRows {

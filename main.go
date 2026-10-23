@@ -8,7 +8,8 @@ import (
 	"os"
 	"path/filepath"
 
-	db "tpespecialweb/db/sqlc"
+	"tpespecialweb/db"
+	sqlc "tpespecialweb/db/sqlc"
 	"tpespecialweb/logic/productCRUD"
 	"tpespecialweb/logic/userCRUD"
 
@@ -59,10 +60,13 @@ func main() {
 
 	fmt.Println("Conexión a la BBDD exitosa")
 
-	queries := db.New(conn)
+	queries := sqlc.New(conn)
 
-	prodHandler := productCRUD.NewProductHandler(queries)
-	userHandler := userCRUD.NewUserHandler(queries)
+	productRepo := db.NewProductAdapter(queries)
+	userRepo := db.NewUserAdapter(queries)
+
+	prodHandler := productCRUD.NewProductHandler(productRepo)
+	userHandler := userCRUD.NewUserHandler(userRepo)
 
 	fmt.Println("BBDD Lista para operar")
 	// Fin conexión BBDD

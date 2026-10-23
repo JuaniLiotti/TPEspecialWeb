@@ -1,28 +1,46 @@
 package userCRUD
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strconv"
 	"strings"
-
-	db "tpespecialweb/db/sqlc"
 )
 
 type UserHandler struct {
-	Queries *db.Queries
+	repo UserRepository
 }
 
-func NewUserHandler(q *db.Queries) *UserHandler {
-	return &UserHandler{
-		Queries: q,
-	}
+func NewUserHandler(repo UserRepository) *UserHandler {
+	return &UserHandler{repo: repo}
+}
+
+type UsuarioRequest struct {
+	Nombre   string `json:"nombre"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type Usuario struct {
+	ID       int32  `json:"id"`
+	Nombre   string `json:"nombre"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
+}
+
+type UserRepository interface {
+	Create(ctx context.Context, req UsuarioRequest) (Usuario, error)
+	GetByID(ctx context.Context, id int32) (Usuario, error)
+	GetAll(ctx context.Context) ([]Usuario, error)
+	Update(ctx context.Context, id int32, req UsuarioRequest) (Usuario, error)
+	Delete(ctx context.Context, id int32) error
 }
 
 func (h *UserHandler) GetUsers(w http.ResponseWriter, r *http.Request) {
 
-	listaUsuarios, err := h.Queries.GetAllUsuarios(r.Context())
+	listaUsuarios, err := h.repo.GetAll(r.Context())
 
 	if err != nil {
 		http.Error(w, "Error al obtener los usuarios", http.StatusInternalServerError)
@@ -42,7 +60,7 @@ func (h *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request, idStr 
 		return
 	}
 
-	usuarioEncontrado, err := h.Queries.GetUsuario(r.Context(), int32(id))
+	usuarioEncontrado, err := h.repo.GetByID(r.Context(), int32(id))
 
 	if err != nil {
 		if err == sql.ErrNoRows {
@@ -58,7 +76,7 @@ func (h *UserHandler) GetUserById(w http.ResponseWriter, r *http.Request, idStr 
 }
 
 func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
-	var nuevoUsuario db.CreateUsuarioParams
+	var nuevoUsuario UsuarioRequest
 
 	err := json.NewDecoder(r.Body).Decode(&nuevoUsuario)
 
@@ -72,7 +90,7 @@ func (h *UserHandler) CreateUser(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	usuarioCreado, err := h.Queries.CreateUsuario(r.Context(), nuevoUsuario)
+	usuarioCreado, err := h.repo.Create(r.Context(), nuevoUsuario)
 
 	if err != nil {
 		http.Error(w, "Error al guardar el usuario", http.StatusInternalServerError)
@@ -93,7 +111,7 @@ func (h *UserHandler) DeleteUserById(w http.ResponseWriter, r *http.Request, idS
 		return
 	}
 
-	err = h.Queries.DeleteUsuario(r.Context(), int32(id))
+	err = h.repo.Delete(r.Context(), int32(id))
 
 	if err != nil {
 		http.Error(w, "Error al eliminar el usuario", http.StatusInternalServerError)
@@ -112,21 +130,19 @@ func (h *UserHandler) UpdateUserById(w http.ResponseWriter, r *http.Request, idS
 		return
 	}
 
-	var uActualizar db.UpdateUsuarioParams
+	var uActualizar UsuarioRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&uActualizar); err != nil {
 		http.Error(w, "Formato JSON inválido", http.StatusBadRequest)
 		return
 	}
 
-	uActualizar.ID = int32(id)
-
 	if uActualizar.Nombre == "" || uActualizar.Email == "" || uActualizar.Password == "" {
 		http.Error(w, "El nombre, email y contraseña son obligatorios", http.StatusBadRequest)
 		return
 	}
 
-	usuarioActualizado, err := h.Queries.UpdateUsuario(r.Context(), uActualizar)
+	usuarioActualizado, err := h.repo.Update(r.Context(), int32(id), uActualizar)
 
 	if err != nil {
 		if err == sql.ErrNoRows {

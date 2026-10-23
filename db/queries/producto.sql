@@ -9,7 +9,7 @@ FROM producto
 WHERE id = $1;
 
 -- name: GetAllProductos :many
-SELECT nombre, descripcion, categoria, color, precio
+SELECT id, nombre, descripcion, categoria, color, precio
 FROM producto;
 
 -- name: UpdateProducto :one
