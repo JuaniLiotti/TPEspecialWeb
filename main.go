@@ -10,6 +10,7 @@ import (
 
 	"tpespecialweb/db"
 	sqlc "tpespecialweb/db/sqlc"
+	"tpespecialweb/logic/cueroCRUD"
 	"tpespecialweb/logic/productCRUD"
 	"tpespecialweb/logic/userCRUD"
 
@@ -64,9 +65,11 @@ func main() {
 
 	productRepo := db.NewProductAdapter(queries)
 	userRepo := db.NewUserAdapter(queries)
+	cueroRepo := db.NewCueroAdapter(queries)
 
 	prodHandler := productCRUD.NewProductHandler(productRepo)
 	userHandler := userCRUD.NewUserHandler(userRepo)
+	cueroHandler := cueroCRUD.NewCueroHandler(cueroRepo)
 
 	fmt.Println("BBDD Lista para operar")
 	// Fin conexión BBDD
@@ -90,9 +93,11 @@ func main() {
 		}
 	}))
 
-	// handler CRUD de productos
-	http.Handle("/products/", loggingMiddleware(http.HandlerFunc(prodHandler.ServeHTTP)))
-	http.Handle("/users/", loggingMiddleware(http.HandlerFunc(userHandler.ServeHTTP)))
+	// API REST JSON bajo /api/. StripPrefix quita "/api" para que cada handler
+	// siga recibiendo rutas del tipo /products/{id}, /users/{id}, /cueros/{id}
+	http.Handle("/api/products/", loggingMiddleware(http.StripPrefix("/api", prodHandler)))
+	http.Handle("/api/users/", loggingMiddleware(http.StripPrefix("/api", userHandler)))
+	http.Handle("/api/cueros/", loggingMiddleware(http.StripPrefix("/api", cueroHandler)))
 
 	fmt.Printf("Servidor escuchando en http://localhost%s\n", port)
 

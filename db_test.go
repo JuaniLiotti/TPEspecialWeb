@@ -169,4 +169,94 @@ func TestQueries_CRUD(t *testing.T) {
 			t.Errorf("No se elimino el producto")
 		}
 	})
+
+	// tests para cuero
+	var cueroID int32
+	nombreCueroTest := "cuero test"
+	tipoTest := "tipo test"
+	acabadoTest := "acabado test"
+	colorCueroTest := "color test"
+	espesorTest := 2.5
+	descripcionCueroTest := "descripcion test"
+	precioCueroTest := int32(1000)
+
+	t.Run("CreateCuero", func(t *testing.T) {
+		cuero, err := queries.CreateCuero(ctx, sqlc.CreateCueroParams{
+			Nombre:      nombreCueroTest,
+			Tipo:        tipoTest,
+			Acabado:     acabadoTest,
+			Color:       colorCueroTest,
+			EspesorMm:   espesorTest,
+			Descripcion: descripcionCueroTest,
+			Precio:      precioCueroTest,
+		})
+		if err != nil {
+			t.Fatalf("Error al crear cuero %v", err)
+		}
+		cueroID = cuero.ID
+	})
+
+	t.Run("GetCuero", func(t *testing.T) {
+		cuero, err := queries.GetCuero(ctx, cueroID)
+		if err != nil {
+			t.Fatalf("Error al buscar cuero %v", err)
+		}
+		if cuero.Nombre != nombreCueroTest || cuero.EspesorMm != espesorTest {
+			t.Errorf("Los datos no son los que se ingresaron, se esperaba %s (%.1f mm) y se obtuvo %s (%.1f mm)", nombreCueroTest, espesorTest, cuero.Nombre, cuero.EspesorMm)
+		}
+	})
+
+	t.Run("GetAllCueros", func(t *testing.T) {
+		cueros, err := queries.GetAllCueros(ctx)
+		if err != nil {
+			t.Fatalf("Error al listar cueros %v", err)
+		}
+		encontrado := false
+		for _, c := range cueros {
+			if c.ID == cueroID {
+				encontrado = true
+			}
+		}
+		if !encontrado {
+			t.Errorf("El cuero creado no aparece en la lista")
+		}
+	})
+
+	nombreCueroUpdate := "cuero update"
+	tipoUpdate := "tipo update"
+	acabadoUpdate := "acabado update"
+	colorCueroUpdate := "color update"
+	espesorUpdate := 3.2
+	descripcionCueroUpdate := "descripcion update"
+	precioCueroUpdate := int32(2000)
+
+	t.Run("UpdateCuero", func(t *testing.T) {
+		cuero, err := queries.UpdateCuero(ctx, sqlc.UpdateCueroParams{
+			ID:          cueroID,
+			Nombre:      nombreCueroUpdate,
+			Tipo:        tipoUpdate,
+			Acabado:     acabadoUpdate,
+			Color:       colorCueroUpdate,
+			EspesorMm:   espesorUpdate,
+			Descripcion: descripcionCueroUpdate,
+			Precio:      precioCueroUpdate,
+		})
+		if err != nil {
+			t.Errorf("Error al actualizar cuero %v", err)
+		}
+		if cuero.Nombre != nombreCueroUpdate || cuero.Tipo != tipoUpdate || cuero.Acabado != acabadoUpdate || cuero.Color != colorCueroUpdate || cuero.EspesorMm != espesorUpdate || cuero.Descripcion != descripcionCueroUpdate || cuero.Precio != precioCueroUpdate {
+			t.Errorf("no se actualizaron los datos")
+		}
+	})
+
+	t.Run("DeleteCuero", func(t *testing.T) {
+		err := queries.DeleteCuero(ctx, cueroID)
+		if err != nil {
+			t.Errorf("Error al eliminar cuero %v", err)
+		}
+		_, err2 := queries.GetCuero(ctx, cueroID)
+		if err2 == nil {
+			t.Errorf("No se elimino el cuero")
+		}
+	})
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"strconv"
 	"strings"
@@ -32,6 +33,15 @@ type ProductRepository interface {
 	GetAll(ctx context.Context) ([]Producto, error)
 	Update(ctx context.Context, id int32, req ProductoRequest) (Producto, error)
 	Delete(ctx context.Context, id int32) error
+}
+
+// Validate contiene las reglas de negocio de un producto.
+// La usan tanto la API JSON como los formularios HTML.
+func Validate(req ProductoRequest) error {
+	if strings.TrimSpace(req.Nombre) == "" || req.Precio <= 0 {
+		return errors.New("el nombre no puede estar vacío y el precio debe ser mayor a cero")
+	}
+	return nil
 }
 
 type ProductHandler struct {
@@ -89,8 +99,8 @@ func (h *ProductHandler) CreateProduct(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if nuevoProducto.Nombre == "" || nuevoProducto.Precio <= 0 {
-		http.Error(w, "El nombre no puede estar vacío y el precio debe ser mayor a cero", http.StatusBadRequest)
+	if err := Validate(nuevoProducto); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 
@@ -141,8 +151,8 @@ func (h *ProductHandler) UpdateProductById(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if pActualizar.Nombre == "" || pActualizar.Precio <= 0 {
-		http.Error(w, "El nombre no puede estar vacío y el precio debe ser mayor a cero", http.StatusBadRequest)
+	if err := Validate(pActualizar); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
 

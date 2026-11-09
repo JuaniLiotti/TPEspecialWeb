@@ -87,9 +87,11 @@ func (a *ProductAdapter) GetAll(ctx context.Context) ([]productcrud.Producto, er
 		return nil, err
 	}
 
-	var productos []productcrud.Producto
+	// make(..., 0) para que una lista vacía se serialice como [] y no como null
+	productos := make([]productcrud.Producto, 0, len(list))
 	for _, res := range list {
 		productos = append(productos, productcrud.Producto{
+			ID:          res.ID,
 			Nombre:      res.Nombre,
 			Descripcion: res.Descripcion,
 			Categoria:   res.Categoria,
