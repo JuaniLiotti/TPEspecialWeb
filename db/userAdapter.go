@@ -74,7 +74,7 @@ func (a *UserAdapter) GetAll(ctx context.Context) ([]usercrud.Usuario, error) {
 		return nil, err
 	}
 
-	var usuarios []usercrud.Usuario
+	usuarios := make([]usercrud.Usuario, 0, len(list))
 	for _, res := range list {
 		usuarios = append(usuarios, usercrud.Usuario{
 			ID:     res.ID,

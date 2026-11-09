@@ -10,7 +10,10 @@ pre-test: run-sqlc build-db-image clean-db start-db wait-db
 run-tests:
 	@echo "Ejecutando los tests de la BBDD..."
 	go test -v ./...
-post-tests: clean-db
+# Make ejecuta cada target una sola vez por corrida, y clean-db ya se usó en pre-test.
+# $(MAKE) lanza una ejecución nueva para que la limpieza final sí se ejecute.
+post-tests:
+	@$(MAKE) --no-print-directory clean-db
 
 
 # ==========================================
@@ -37,7 +40,8 @@ run-api-tests:
 	chmod +x requests.sh
 	./requests.sh
 
-post-test-api: clean-app clean-db
+post-test-api: clean-app
+	@$(MAKE) --no-print-directory clean-db
 
 clean-app:
 	@echo "Cerrando el servidor de la aplicación..."

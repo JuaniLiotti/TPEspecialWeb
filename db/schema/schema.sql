@@ -7,6 +7,17 @@ CREATE TABLE producto(
     precio INTEGER NOT NULL
 );
 
+CREATE TABLE cuero(
+    id SERIAL PRIMARY KEY,
+    nombre VARCHAR(255) NOT NULL,
+    tipo VARCHAR(255) NOT NULL,
+    acabado VARCHAR(255) NOT NULL,
+    color VARCHAR(255) NOT NULL,
+    espesor_mm DOUBLE PRECISION NOT NULL,
+    descripcion VARCHAR(255) NOT NULL,
+    precio INTEGER NOT NULL
+);
+
 CREATE TABLE usuario(
     id SERIAL PRIMARY KEY,
     nombre VARCHAR(255) NOT NULL,
