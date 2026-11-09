@@ -14,3 +14,18 @@ app.pid
 
 # Archivos sqlc autogenerados
 db/sqlc/
+
+# Imágenes subidas desde la app o la API (se generan al usarla, no son código)
+uploads/
+
+# Logs y reportes de cobertura de tests
+*.log
+*.out
+coverage.html
+
+# Archivos del sistema operativo y de otros editores
+.DS_Store
+Thumbs.db
+.idea/
+*.swp
+*~

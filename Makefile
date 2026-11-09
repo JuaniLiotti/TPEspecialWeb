@@ -49,6 +49,16 @@ clean-app:
 
 
 # ==========================================
+# EJECUCIÓN DE LA APLICACIÓN (TP4)
+# ==========================================
+# Levanta la BBDD y el servidor en primer plano: abrir http://localhost:8080
+# Se corta con Ctrl+C. La BBDD queda levantada; para borrarla: make clean-db
+run: pre-test build-app
+	@echo "Servidor en http://localhost:8080 (Ctrl+C para cortar, después 'make clean-db')"
+	./api-server
+
+
+# ==========================================
 # TAREAS COMPARTIDAS
 # ==========================================
 run-sqlc:

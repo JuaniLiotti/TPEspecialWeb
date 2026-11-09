@@ -11,6 +11,7 @@ import (
 	"tpespecialweb/db"
 	sqlc "tpespecialweb/db/sqlc"
 	"tpespecialweb/logic/cueroCRUD"
+	"tpespecialweb/logic/imagenes"
 	"tpespecialweb/logic/productCRUD"
 	"tpespecialweb/logic/userCRUD"
 
@@ -98,6 +99,16 @@ func main() {
 	http.Handle("/api/products/", loggingMiddleware(http.StripPrefix("/api", prodHandler)))
 	http.Handle("/api/users/", loggingMiddleware(http.StripPrefix("/api", userHandler)))
 	http.Handle("/api/cueros/", loggingMiddleware(http.StripPrefix("/api", cueroHandler)))
+
+	// Imágenes: patrones de Go 1.22+ con método y parámetros ({id}, {imgId}).
+	// Son más específicos que "/api/products/", así que el mux los elige primero.
+	http.Handle("POST /api/products/{id}/imagenes", loggingMiddleware(http.HandlerFunc(prodHandler.UploadImagenes)))
+	http.Handle("DELETE /api/products/{id}/imagenes/{imgId}", loggingMiddleware(http.HandlerFunc(prodHandler.DeleteImagen)))
+	http.Handle("POST /api/cueros/{id}/imagenes", loggingMiddleware(http.HandlerFunc(cueroHandler.UploadImagenes)))
+	http.Handle("DELETE /api/cueros/{id}/imagenes/{imgId}", loggingMiddleware(http.HandlerFunc(cueroHandler.DeleteImagen)))
+
+	// Archivos de imagen subidos, ej: /uploads/productos/3/a1b2c3.jpg
+	http.Handle("GET /uploads/", http.StripPrefix("/uploads/", http.FileServer(http.Dir(imagenes.DirBase))))
 
 	fmt.Printf("Servidor escuchando en http://localhost%s\n", port)
 

@@ -5,9 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"tpespecialweb/logic/imagenes"
 )
 
 type Cuero struct {
@@ -19,6 +22,8 @@ type Cuero struct {
 	EspesorMm   float64 `json:"espesor_mm"`
 	Descripcion string  `json:"descripcion"`
 	Precio      int32   `json:"precio"`
+	// La primera imagen (la de menor ID) es la portada
+	Imagenes []imagenes.Imagen `json:"imagenes"`
 }
 
 type CueroRequest struct {
@@ -37,6 +42,10 @@ type CueroRepository interface {
 	GetAll(ctx context.Context) ([]Cuero, error)
 	Update(ctx context.Context, id int32, req CueroRequest) (Cuero, error)
 	Delete(ctx context.Context, id int32) error
+
+	AddImagen(ctx context.Context, cueroID int32, url string) (imagenes.Imagen, error)
+	GetImagen(ctx context.Context, cueroID int32, imagenID int32) (imagenes.Imagen, error)
+	DeleteImagen(ctx context.Context, cueroID int32, imagenID int32) error
 }
 
 // Validate contiene las reglas de negocio de un cuero.
@@ -165,6 +174,12 @@ func (h *CueroHandler) DeleteCueroById(w http.ResponseWriter, r *http.Request, i
 	if err := h.repo.Delete(r.Context(), id); err != nil {
 		http.Error(w, "Error al eliminar el cuero", http.StatusInternalServerError)
 		return
+	}
+
+	// Las filas de cuero_imagen se borran solas (ON DELETE CASCADE),
+	// pero los archivos en disco hay que borrarlos a mano
+	if err := imagenes.BorrarCarpeta(carpetaImagenes(id)); err != nil {
+		log.Printf("No se pudieron borrar las imágenes del cuero %d: %v", id, err)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }

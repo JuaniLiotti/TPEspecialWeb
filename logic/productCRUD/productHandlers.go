@@ -5,9 +5,12 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 	"strconv"
 	"strings"
+
+	"tpespecialweb/logic/imagenes"
 )
 
 type Producto struct {
@@ -17,6 +20,8 @@ type Producto struct {
 	Categoria   string `json:"categoria"`
 	Color       string `json:"color"`
 	Precio      int32  `json:"precio"`
+	// La primera imagen (la de menor ID) es la portada
+	Imagenes []imagenes.Imagen `json:"imagenes"`
 }
 
 type ProductoRequest struct {
@@ -33,6 +38,10 @@ type ProductRepository interface {
 	GetAll(ctx context.Context) ([]Producto, error)
 	Update(ctx context.Context, id int32, req ProductoRequest) (Producto, error)
 	Delete(ctx context.Context, id int32) error
+
+	AddImagen(ctx context.Context, productoID int32, url string) (imagenes.Imagen, error)
+	GetImagen(ctx context.Context, productoID int32, imagenID int32) (imagenes.Imagen, error)
+	DeleteImagen(ctx context.Context, productoID int32, imagenID int32) error
 }
 
 // Validate contiene las reglas de negocio de un producto.
@@ -130,6 +139,12 @@ func (h *ProductHandler) DeleteProductById(w http.ResponseWriter, r *http.Reques
 	if err != nil {
 		http.Error(w, "Error al eliminar el producto", http.StatusInternalServerError)
 		return
+	}
+
+	// Las filas de producto_imagen se borran solas (ON DELETE CASCADE),
+	// pero los archivos en disco hay que borrarlos a mano
+	if err := imagenes.BorrarCarpeta(carpetaImagenes(int32(id))); err != nil {
+		log.Printf("No se pudieron borrar las imágenes del producto %d: %v", id, err)
 	}
 
 	w.WriteHeader(http.StatusNoContent) // 204
