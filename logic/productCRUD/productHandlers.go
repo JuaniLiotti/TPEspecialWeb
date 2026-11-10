@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+
+	"tpespecialweb/logic/imagenes"
 )
 
 type Producto struct {
@@ -17,6 +19,8 @@ type Producto struct {
 	Categoria   string `json:"categoria"`
 	Color       string `json:"color"`
 	Precio      int32  `json:"precio"`
+	// La primera imagen (la de menor ID) es la portada
+	Imagenes []imagenes.Imagen `json:"imagenes"`
 }
 
 type ProductoRequest struct {
@@ -33,6 +37,10 @@ type ProductRepository interface {
 	GetAll(ctx context.Context) ([]Producto, error)
 	Update(ctx context.Context, id int32, req ProductoRequest) (Producto, error)
 	Delete(ctx context.Context, id int32) error
+
+	AddImagen(ctx context.Context, productoID int32, url string) (imagenes.Imagen, error)
+	GetImagen(ctx context.Context, productoID int32, imagenID int32) (imagenes.Imagen, error)
+	DeleteImagen(ctx context.Context, productoID int32, imagenID int32) error
 }
 
 // Validate contiene las reglas de negocio de un producto.
@@ -125,9 +133,7 @@ func (h *ProductHandler) DeleteProductById(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err = h.repo.Delete(r.Context(), int32(id))
-
-	if err != nil {
+	if err := Eliminar(r.Context(), h.repo, int32(id)); err != nil {
 		http.Error(w, "Error al eliminar el producto", http.StatusInternalServerError)
 		return
 	}

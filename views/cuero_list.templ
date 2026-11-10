@@ -1,0 +1,42 @@
+package views
+
+import (
+	"fmt"
+	"tpespecialweb/logic/cueroCRUD"
+)
+
+// CueroList muestra una tarjeta por cuero, o un mensaje si no hay ninguno.
+// Genera el mismo HTML (y las mismas clases) que armaba app.js en el TP4.
+templ CueroList(cueros []cueroCRUD.Cuero) {
+	<div class="lista-tarjetas">
+		if len(cueros) == 0 {
+			<p class="lista-vacia">Todavía no hay cueros cargados.</p>
+		}
+		for _, c := range cueros {
+			<article class="tarjeta">
+				if len(c.Imagenes) > 0 {
+					<img class="tarjeta-imagen" src={ c.Imagenes[0].URL } alt={ c.Nombre }/>
+				} else {
+					<div class="tarjeta-imagen sin-imagen">Sin imagen</div>
+				}
+				<div class="tarjeta-cuerpo">
+					<h4 class="tarjeta-titulo">{ c.Nombre }</h4>
+					<p class="tarjeta-detalle">{ unir(c.Tipo, c.Acabado) }</p>
+					<p class="tarjeta-detalle">{ unir(c.Color, Espesor(c.EspesorMm)) }</p>
+					if c.Descripcion != "" {
+						<p class="tarjeta-detalle">{ c.Descripcion }</p>
+					}
+					if len(c.Imagenes) > 1 {
+						<p class="tarjeta-detalle">{ fmt.Sprint(len(c.Imagenes)) } fotos</p>
+					}
+					<div class="tarjeta-pie">
+						<span class="tarjeta-precio">{ Precio(c.Precio) }</span>
+						<form method="post" action={ templ.URL(fmt.Sprintf("/cueros/%d/eliminar", c.ID)) }>
+							<button type="submit" class="btn-eliminar">Eliminar</button>
+						</form>
+					</div>
+				</div>
+			</article>
+		}
+	</div>
+}

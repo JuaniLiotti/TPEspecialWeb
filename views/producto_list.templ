@@ -1,0 +1,43 @@
+package views
+
+import (
+	"fmt"
+	"tpespecialweb/logic/productCRUD"
+)
+
+// ProductoList muestra una tarjeta por producto, o un mensaje si no hay ninguno.
+// Genera el mismo HTML (y las mismas clases) que armaba app.js en el TP4.
+templ ProductoList(productos []productCRUD.Producto) {
+	<div class="lista-tarjetas">
+		if len(productos) == 0 {
+			<p class="lista-vacia">Todavía no hay productos cargados.</p>
+		}
+		for _, p := range productos {
+			<article class="tarjeta">
+				if len(p.Imagenes) > 0 {
+					<img class="tarjeta-imagen" src={ p.Imagenes[0].URL } alt={ p.Nombre }/>
+				} else {
+					<div class="tarjeta-imagen sin-imagen">Sin imagen</div>
+				}
+				<div class="tarjeta-cuerpo">
+					<h4 class="tarjeta-titulo">{ p.Nombre }</h4>
+					if detalle := unir(p.Categoria, p.Color); detalle != "" {
+						<p class="tarjeta-detalle">{ detalle }</p>
+					}
+					if p.Descripcion != "" {
+						<p class="tarjeta-detalle">{ p.Descripcion }</p>
+					}
+					if len(p.Imagenes) > 1 {
+						<p class="tarjeta-detalle">{ fmt.Sprint(len(p.Imagenes)) } fotos</p>
+					}
+					<div class="tarjeta-pie">
+						<span class="tarjeta-precio">{ Precio(p.Precio) }</span>
+						<form method="post" action={ templ.URL(fmt.Sprintf("/productos/%d/eliminar", p.ID)) }>
+							<button type="submit" class="btn-eliminar">Eliminar</button>
+						</form>
+					</div>
+				</div>
+			</article>
+		}
+	</div>
+}

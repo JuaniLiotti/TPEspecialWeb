@@ -1,0 +1,350 @@
+/* =====================================================================
+   Italpiel - Estilos (TP4)
+   Layout de cada sección con CSS Grid, tarjetas con Flexbox.
+   ===================================================================== */
+
+/* Paleta en variables: se cambia acá y se aplica a toda la página */
+:root {
+    --fondo: #f6f0e6;
+    --superficie: #fffdf9;
+    --texto: #2b1d14;
+    --texto-suave: #6b5646;
+    --cuero: #8b4a1f;
+    --cuero-oscuro: #5e3214;
+    --borde: #e2d5c3;
+    --peligro: #a3261d;
+    --radio: 10px;
+    --sombra: 0 1px 3px rgba(43, 29, 20, 0.12);
+}
+
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.5;
+    color: var(--texto);
+    background: var(--fondo);
+}
+
+/* ---------- Encabezado y navegación (Flexbox) ---------- */
+
+.encabezado {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 24px;
+    padding: 16px 24px;
+    background: var(--cuero-oscuro);
+    color: var(--superficie);
+}
+
+.encabezado h1 {
+    margin: 0;
+    font-size: 1.5rem;
+}
+
+.encabezado a {
+    color: inherit;
+    text-decoration: none;
+}
+
+.encabezado nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px 20px;
+}
+
+.encabezado nav a {
+    opacity: 0.85;
+}
+
+.encabezado nav a:hover {
+    opacity: 1;
+    text-decoration: underline;
+}
+
+/* ---------- Contenido ---------- */
+
+.contenedor {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px 16px 48px;
+}
+
+.texto {
+    max-width: 720px;
+}
+
+/* ---------- Catálogo de la página "Sobre nosotros" ---------- */
+
+.texto a {
+    color: var(--cuero);
+    font-weight: 600;
+}
+
+.catalogo {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0 0 16px;
+}
+
+.catalogo-item {
+    padding: 14px 16px;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-left: 4px solid var(--cuero);
+    border-radius: var(--radio);
+    box-shadow: var(--sombra);
+}
+
+.catalogo-item dt {
+    font-weight: 700;
+    color: var(--cuero-oscuro);
+}
+
+.catalogo-item dd {
+    margin: 4px 0 0;
+    color: var(--texto-suave);
+}
+
+/* ---------- Selector cueros / productos (TP5) ---------- */
+
+/* Dos links con forma de pestañas: el servidor marca la activa con .activa */
+.selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.selector-opcion {
+    padding: 8px 18px;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--cuero-oscuro);
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: 999px;
+}
+
+.selector-opcion:hover {
+    border-color: var(--cuero);
+}
+
+.selector-opcion.activa {
+    color: #fff;
+    background: var(--cuero);
+    border-color: var(--cuero);
+}
+
+.seccion {
+    margin-bottom: 48px;
+    /* compensa el salto al ancla (#cueros, #productos) */
+    scroll-margin-top: 16px;
+}
+
+.seccion h2 {
+    margin: 0 0 16px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--cuero);
+    color: var(--cuero-oscuro);
+}
+
+/* Layout principal con Grid: formulario a la izquierda, lista a la derecha */
+.seccion-grid {
+    display: grid;
+    grid-template-columns: 300px 1fr;
+    gap: 24px;
+    align-items: start;
+}
+
+/* ---------- Formulario ---------- */
+
+.formulario {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    box-shadow: var(--sombra);
+}
+
+.formulario h3 {
+    margin: 0;
+}
+
+.formulario label {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.formulario input,
+.formulario textarea {
+    font: inherit;
+    font-weight: normal;
+    padding: 8px 10px;
+    border: 1px solid var(--borde);
+    border-radius: 6px;
+    background: #fff;
+}
+
+.formulario input:focus,
+.formulario textarea:focus {
+    outline: 2px solid var(--cuero);
+    outline-offset: 1px;
+}
+
+.formulario input[type="file"] {
+    padding: 6px;
+    font-size: 0.85rem;
+}
+
+button {
+    font: inherit;
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+}
+
+.formulario button[type="submit"] {
+    padding: 10px;
+    font-weight: 600;
+    color: #fff;
+    background: var(--cuero);
+}
+
+.formulario button[type="submit"]:hover {
+    background: var(--cuero-oscuro);
+}
+
+button:disabled {
+    opacity: 0.6;
+    cursor: wait;
+}
+
+.mensaje-error {
+    margin: 0;
+    padding: 8px 10px;
+    font-size: 0.9rem;
+    color: var(--peligro);
+    background: #fbeae8;
+    border-radius: 6px;
+}
+
+/* ---------- Lista de tarjetas (Grid) ---------- */
+
+/* auto-fill crea todas las columnas que entran en el ancho, aunque queden vacías.
+   Así cada tarjeta ocupa siempre una columna del mismo ancho, esté sola en su
+   fila o no (con Flexbox, las de la última fila se estiraban). */
+.lista-tarjetas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 16px;
+}
+
+/* El mensaje de lista vacía ocupa todo el ancho, no una sola columna */
+.lista-tarjetas > p {
+    grid-column: 1 / -1;
+}
+
+.lista-vacia {
+    margin: 0;
+    color: var(--texto-suave);
+}
+
+.tarjeta {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    box-shadow: var(--sombra);
+}
+
+.tarjeta-imagen {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    display: block;
+    background: var(--borde);
+}
+
+.sin-imagen {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--texto-suave);
+    font-size: 0.9rem;
+}
+
+.tarjeta-cuerpo {
+    /* ocupa el alto sobrante para que el pie quede siempre abajo */
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 12px 14px 14px;
+}
+
+.tarjeta-titulo {
+    margin: 0 0 4px;
+    font-size: 1.05rem;
+}
+
+.tarjeta-detalle {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--texto-suave);
+}
+
+.tarjeta-pie {
+    margin-top: auto;
+    padding-top: 10px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+}
+
+/* El botón Eliminar va dentro de un <form> (POST sin JS): que no agregue márgenes */
+.tarjeta-pie form {
+    margin: 0;
+}
+
+.tarjeta-precio {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: var(--cuero-oscuro);
+}
+
+.btn-eliminar {
+    padding: 6px 12px;
+    font-size: 0.85rem;
+    color: var(--peligro);
+    background: transparent;
+    border: 1px solid currentColor;
+}
+
+.btn-eliminar:hover {
+    color: #fff;
+    background: var(--peligro);
+}
+
+/* ---------- Pantallas angostas: una sola columna ---------- */
+
+@media (max-width: 760px) {
+    .seccion-grid {
+        grid-template-columns: 1fr;
+    }
+}

@@ -21,8 +21,39 @@ curl -s -X PUT $BASE_URL/api/products/1 \
     -H "Content-Type: application/json" \
     -d '{"nombre": "Cartera Premium", "descripcion": "Cuero y detalles en oro", "categoria": "Accesorios", "color": "Negro", "precio": 65000}' | jq || echo "Hecho"
 
+echo -e "\n--- 1.1 Imágenes de PRODUCTOS ---"
+echo "POST: Subiendo 2 imágenes al producto con ID 1 (multipart/form-data)..."
+curl -s -w "\nCódigo HTTP (se espera 201): %{http_code}\n" -X POST $BASE_URL/api/products/1/imagenes \
+    -F "imagenes=@testdata/producto.png" \
+    -F "imagenes=@testdata/cuero.jpg"
+
+echo -e "\nPOST: Intentando subir un archivo de texto con extensión .jpg..."
+curl -s -w "\nCódigo HTTP (se espera 400): %{http_code}\n" -X POST $BASE_URL/api/products/1/imagenes \
+    -F "imagenes=@testdata/falsa.jpg"
+
+echo -e "\nPOST: Intentando subir una imagen a un producto que no existe..."
+curl -s -w "\nCódigo HTTP (se espera 404): %{http_code}\n" -X POST $BASE_URL/api/products/999/imagenes \
+    -F "imagenes=@testdata/producto.png"
+
+echo -e "\nGET: El producto con ID 1 ahora incluye sus imágenes..."
+curl -s -X GET $BASE_URL/api/products/1 | jq || echo "Hecho"
+
+URL_IMAGEN=$(curl -s $BASE_URL/api/products/1 | jq -r '.imagenes[0].url')
+echo -e "\nGET: Descargando la imagen publicada en $URL_IMAGEN..."
+curl -s -o /dev/null -w "Código HTTP (se espera 200): %{http_code} - Content-Type: %{content_type}\n" $BASE_URL$URL_IMAGEN
+
+ID_IMAGEN=$(curl -s $BASE_URL/api/products/1 | jq -r '.imagenes[0].id')
+echo -e "\nDELETE: Eliminando la imagen con ID $ID_IMAGEN del producto 1..."
+curl -s -w "\nCódigo HTTP (se espera 204): %{http_code}\n" -X DELETE $BASE_URL/api/products/1/imagenes/$ID_IMAGEN
+
+echo -e "\nGET: El archivo de la imagen eliminada ya no se sirve..."
+curl -s -o /dev/null -w "Código HTTP (se espera 404): %{http_code}\n" $BASE_URL$URL_IMAGEN
+
 echo -e "\nDELETE: Eliminando el producto con ID 1..."
 curl -s -w "\nCódigo HTTP (se espera 204): %{http_code}\n" -X DELETE $BASE_URL/api/products/1
+
+echo -e "\nVerificando que se borró la carpeta de imágenes del producto 1..."
+if [ -d uploads/productos/1 ]; then echo "ERROR: uploads/productos/1 todavía existe"; else echo "OK: uploads/productos/1 ya no existe"; fi
 
 
 echo -e "\n--- 2. Pruebas de USUARIOS ---"
@@ -67,8 +98,26 @@ curl -s -X PUT $BASE_URL/api/cueros/1 \
     -H "Content-Type: application/json" \
     -d '{"nombre": "Vaqueta Engrasada", "tipo": "Vacuno", "acabado": "Graso", "color": "Marrón oscuro", "espesor_mm": 2.8, "descripcion": "Cuero engrasado para cinturones", "precio": 135000}' | jq || echo "Hecho"
 
+echo -e "\n--- 3.1 Imágenes de CUEROS ---"
+echo "POST: Subiendo una imagen al cuero con ID 1..."
+curl -s -w "\nCódigo HTTP (se espera 201): %{http_code}\n" -X POST $BASE_URL/api/cueros/1/imagenes \
+    -F "imagenes=@testdata/cuero.jpg"
+
+echo -e "\nPOST: Intentando subir sin ningún archivo..."
+curl -s -w "\nCódigo HTTP (se espera 400): %{http_code}\n" -X POST $BASE_URL/api/cueros/1/imagenes \
+    -F "otro_campo=hola"
+
+echo -e "\nGET: Listado de cueros con sus imágenes..."
+curl -s -X GET $BASE_URL/api/cueros/ | jq || echo "Hecho"
+
+echo -e "\nDELETE: Intentando eliminar una imagen que no existe..."
+curl -s -w "\nCódigo HTTP (se espera 404): %{http_code}\n" -X DELETE $BASE_URL/api/cueros/1/imagenes/999
+
 echo -e "\nDELETE: Eliminando el cuero con ID 1..."
 curl -s -w "\nCódigo HTTP (se espera 204): %{http_code}\n" -X DELETE $BASE_URL/api/cueros/1
+
+echo -e "\nVerificando que se borró la carpeta de imágenes del cuero 1..."
+if [ -d uploads/cueros/1 ]; then echo "ERROR: uploads/cueros/1 todavía existe"; else echo "OK: uploads/cueros/1 ya no existe"; fi
 
 echo -e "\nGET: Buscando el cuero con ID 1 ya eliminado..."
 curl -s -w "\nCódigo HTTP (se espera 404): %{http_code}\n" -X GET $BASE_URL/api/cueros/1
