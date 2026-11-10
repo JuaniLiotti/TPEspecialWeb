@@ -1,6 +1,7 @@
 package productCRUD
 
 import (
+	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
@@ -12,8 +13,8 @@ import (
 	"tpespecialweb/logic/imagenes"
 )
 
-// carpetaImagenes devuelve la subcarpeta de uploads/ donde van las imágenes de un producto
-func carpetaImagenes(productoID int32) string {
+// CarpetaImagenes devuelve la subcarpeta de uploads/ donde van las imágenes de un producto
+func CarpetaImagenes(productoID int32) string {
 	return fmt.Sprintf("productos/%d", productoID)
 }
 
@@ -24,6 +25,43 @@ func pathID(r *http.Request, nombre string) (int32, bool) {
 		return 0, false
 	}
 	return int32(id), true
+}
+
+// RegistrarImagenes guarda en disco las imágenes ya validadas de un producto y
+// las asocia en la BD. La usan la API (POST /api/products/{id}/imagenes) y el
+// formulario HTML de alta.
+func RegistrarImagenes(ctx context.Context, repo ProductRepository, id int32, validadas []imagenes.Validada) ([]imagenes.Imagen, error) {
+	urls, err := imagenes.Guardar(validadas, CarpetaImagenes(id))
+	if err != nil {
+		return nil, err
+	}
+
+	creadas := make([]imagenes.Imagen, 0, len(urls))
+	for i, url := range urls {
+		img, err := repo.AddImagen(ctx, id, url)
+		if err != nil {
+			// Si falla la BD, borra los archivos que todavía no quedaron registrados
+			for _, pendiente := range urls[i:] {
+				imagenes.Borrar(pendiente)
+			}
+			return nil, err
+		}
+		creadas = append(creadas, img)
+	}
+	return creadas, nil
+}
+
+// Eliminar borra un producto y la carpeta con sus imágenes.
+// Las filas de producto_imagen se borran solas (ON DELETE CASCADE),
+// pero los archivos en disco hay que borrarlos a mano.
+func Eliminar(ctx context.Context, repo ProductRepository, id int32) error {
+	if err := repo.Delete(ctx, id); err != nil {
+		return err
+	}
+	if err := imagenes.BorrarCarpeta(CarpetaImagenes(id)); err != nil {
+		log.Printf("No se pudieron borrar las imágenes del producto %d: %v", id, err)
+	}
+	return nil
 }
 
 // UploadImagenes maneja POST /api/products/{id}/imagenes
@@ -45,29 +83,28 @@ func (h *ProductHandler) UploadImagenes(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	urls, err := imagenes.Recibir(w, r, carpetaImagenes(id))
+	headers, err := imagenes.Parsear(w, r)
+	if err == nil && len(headers) == 0 {
+		err = imagenes.ErrSinImagenes
+	}
+	var validadas []imagenes.Validada
+	if err == nil {
+		validadas, err = imagenes.Validar(headers)
+	}
 	if err != nil {
 		if errors.Is(err, imagenes.ErrArchivoInvalido) {
 			http.Error(w, err.Error(), http.StatusBadRequest)
 		} else {
-			log.Printf("Error al guardar imágenes del producto %d: %v", id, err)
-			http.Error(w, "Error al guardar las imágenes", http.StatusInternalServerError)
+			http.Error(w, "Error al leer las imágenes", http.StatusInternalServerError)
 		}
 		return
 	}
 
-	creadas := make([]imagenes.Imagen, 0, len(urls))
-	for i, url := range urls {
-		img, err := h.repo.AddImagen(r.Context(), id, url)
-		if err != nil {
-			// Si falla la BD, borra los archivos que todavía no quedaron registrados
-			for _, pendiente := range urls[i:] {
-				imagenes.Borrar(pendiente)
-			}
-			http.Error(w, "Error al registrar las imágenes", http.StatusInternalServerError)
-			return
-		}
-		creadas = append(creadas, img)
+	creadas, err := RegistrarImagenes(r.Context(), h.repo, id, validadas)
+	if err != nil {
+		log.Printf("Error al guardar imágenes del producto %d: %v", id, err)
+		http.Error(w, "Error al guardar las imágenes", http.StatusInternalServerError)
+		return
 	}
 
 	w.Header().Set("Content-Type", "application/json")

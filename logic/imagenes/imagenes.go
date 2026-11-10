@@ -40,56 +40,55 @@ var tiposPermitidos = map[string]string{
 }
 
 // ErrArchivoInvalido indica un error del cliente (corresponde a un 400).
-// Cualquier otro error devuelto por Recibir es un error del servidor (500).
+// Cualquier otro error devuelto por Parsear, Validar o Guardar es un error del servidor (500).
 var ErrArchivoInvalido = errors.New("archivo inválido")
 
 // ErrSinImagenes indica que el request no trae ningún archivo en el campo "imagenes"
 var ErrSinImagenes = fmt.Errorf("%w: no se envió ninguna imagen en el campo %q", ErrArchivoInvalido, CampoFormulario)
 
-// archivoValidado es un archivo ya revisado, listo para guardarse
-type archivoValidado struct {
+// Validada es un archivo ya revisado, listo para guardarse con Guardar
+type Validada struct {
 	header    *multipart.FileHeader
 	extension string
 }
 
-// Recibir lee los archivos del campo "imagenes" de un request multipart/form-data,
-// valida que todos sean imágenes y los guarda en uploads/<carpeta>/.
-// Devuelve la URL pública de cada archivo guardado.
-// Primero valida todos los archivos y recién después guarda: si uno es inválido,
-// no se guarda ninguno.
-func Recibir(w http.ResponseWriter, r *http.Request, carpeta string) ([]string, error) {
+// Parsear limita el tamaño del request, lo parsea como multipart/form-data y
+// devuelve los archivos del campo "imagenes" (puede ser una lista vacía).
+// Los demás campos del formulario quedan disponibles en r.FormValue.
+func Parsear(w http.ResponseWriter, r *http.Request) ([]*multipart.FileHeader, error) {
 	// Limita el tamaño del body para que no nos llenen la memoria o el disco
 	r.Body = http.MaxBytesReader(w, r.Body, MaxRequestBytes)
 	if err := r.ParseMultipartForm(MaxRequestBytes); err != nil {
 		return nil, fmt.Errorf("%w: el request debe ser multipart/form-data y pesar menos de 10 MB", ErrArchivoInvalido)
 	}
+	return r.MultipartForm.File[CampoFormulario], nil
+}
 
-	headers := r.MultipartForm.File[CampoFormulario]
-	if len(headers) == 0 {
-		return nil, ErrSinImagenes
-	}
-
-	// 1. Validar todos
-	validados := make([]archivoValidado, 0, len(headers))
+// Validar revisa que todos los archivos sean imágenes permitidas.
+// Si uno solo es inválido, devuelve error y no se debe guardar ninguno.
+func Validar(headers []*multipart.FileHeader) ([]Validada, error) {
+	validadas := make([]Validada, 0, len(headers))
 	for _, h := range headers {
 		ext, err := detectarExtension(h)
 		if err != nil {
 			return nil, err
 		}
-		validados = append(validados, archivoValidado{header: h, extension: ext})
+		validadas = append(validadas, Validada{header: h, extension: ext})
 	}
+	return validadas, nil
+}
 
-	// 2. Guardar todos
-	dir := filepath.Join(DirBase, carpeta)
-	if err := os.MkdirAll(dir, 0755); err != nil {
+// Guardar escribe en uploads/<carpeta>/ los archivos ya validados y devuelve
+// la URL pública de cada uno. Si falla a mitad de camino, borra lo ya guardado.
+func Guardar(validadas []Validada, carpeta string) ([]string, error) {
+	if err := os.MkdirAll(filepath.Join(DirBase, carpeta), 0755); err != nil {
 		return nil, err
 	}
 
-	urls := make([]string, 0, len(validados))
-	for _, v := range validados {
+	urls := make([]string, 0, len(validadas))
+	for _, v := range validadas {
 		url, err := guardar(v, carpeta)
 		if err != nil {
-			// Si falla a mitad de camino, borra lo que ya se había guardado
 			for _, u := range urls {
 				Borrar(u)
 			}
@@ -126,7 +125,7 @@ func detectarExtension(h *multipart.FileHeader) (string, error) {
 
 // guardar copia el archivo a disco con un nombre aleatorio generado por el servidor.
 // Nunca se usa el nombre original: podría traer rutas como "../../main.go".
-func guardar(v archivoValidado, carpeta string) (string, error) {
+func guardar(v Validada, carpeta string) (string, error) {
 	nombre, err := nombreAleatorio()
 	if err != nil {
 		return "", err
@@ -159,7 +158,7 @@ func nombreAleatorio() (string, error) {
 	return hex.EncodeToString(b), nil
 }
 
-// Borrar elimina del disco el archivo de una URL devuelta por Recibir
+// Borrar elimina del disco el archivo de una URL devuelta por Guardar
 func Borrar(url string) error {
 	ruta, ok := rutaEnDisco(url)
 	if !ok {

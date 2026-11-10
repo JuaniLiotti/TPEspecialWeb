@@ -29,3 +29,6 @@ Thumbs.db
 .idea/
 *.swp
 *~
+
+# Archivos templ autogenerados (se generan con: go tool templ generate)
+*_templ.go

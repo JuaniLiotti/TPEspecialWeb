@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -134,17 +133,9 @@ func (h *ProductHandler) DeleteProductById(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	err = h.repo.Delete(r.Context(), int32(id))
-
-	if err != nil {
+	if err := Eliminar(r.Context(), h.repo, int32(id)); err != nil {
 		http.Error(w, "Error al eliminar el producto", http.StatusInternalServerError)
 		return
-	}
-
-	// Las filas de producto_imagen se borran solas (ON DELETE CASCADE),
-	// pero los archivos en disco hay que borrarlos a mano
-	if err := imagenes.BorrarCarpeta(carpetaImagenes(int32(id))); err != nil {
-		log.Printf("No se pudieron borrar las imágenes del producto %d: %v", id, err)
 	}
 
 	w.WriteHeader(http.StatusNoContent) // 204

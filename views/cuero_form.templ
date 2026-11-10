@@ -1,0 +1,46 @@
+package views
+
+// CueroForm es el formulario de alta de cueros. Hace un POST clásico a /cueros
+// (multipart/form-data porque puede llevar imágenes). Si el servidor rechaza
+// los datos, vuelve a renderizarlo con los valores cargados y el error.
+templ CueroForm(f CueroFormData) {
+	<form class="formulario" method="post" action="/cueros" enctype="multipart/form-data">
+		<h3>Nuevo cuero</h3>
+		<label>
+			Nombre
+			<input type="text" name="nombre" value={ f.Nombre } required/>
+		</label>
+		<label>
+			Tipo
+			<input type="text" name="tipo" value={ f.Tipo } placeholder="Vacuno, ovino..." required/>
+		</label>
+		<label>
+			Acabado
+			<input type="text" name="acabado" value={ f.Acabado } placeholder="Graso, curtido vegetal..."/>
+		</label>
+		<label>
+			Color
+			<input type="text" name="color" value={ f.Color }/>
+		</label>
+		<label>
+			Espesor (mm)
+			<input type="number" name="espesor_mm" value={ f.EspesorMm } step="0.1" min="0.1" required/>
+		</label>
+		<label>
+			Precio ($)
+			<input type="number" name="precio" value={ f.Precio } step="1" min="1" required/>
+		</label>
+		<label>
+			Descripción
+			<textarea name="descripcion" rows="3">{ f.Descripcion }</textarea>
+		</label>
+		<label>
+			Imágenes
+			<input type="file" name="imagenes" accept="image/jpeg,image/png,image/webp" multiple/>
+		</label>
+		if f.Error != "" {
+			<p class="mensaje-error" role="alert">{ f.Error }</p>
+		}
+		<button type="submit">Agregar cuero</button>
+	</form>
+}

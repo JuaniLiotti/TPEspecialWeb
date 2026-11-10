@@ -1,0 +1,43 @@
+package views
+
+// IndexPage es la página principal. Arriba va el selector y abajo solo la
+// sección elegida (cueros o productos), con su formulario y su lista.
+templ IndexPage(data IndexData) {
+	@Layout("Italpiel - Tienda de cueros") {
+		@Selector(data.Vista)
+		if data.Vista == VistaProductos {
+			<section id="productos" class="seccion">
+				<h2>Productos terminados</h2>
+				<div class="seccion-grid">
+					@ProductoForm(data.FormProducto)
+					@ProductoList(data.Productos)
+				</div>
+			</section>
+		} else {
+			<section id="cueros" class="seccion">
+				<h2>Cueros</h2>
+				<div class="seccion-grid">
+					@CueroForm(data.FormCuero)
+					@CueroList(data.Cueros)
+				</div>
+			</section>
+		}
+	}
+}
+
+// Selector cambia entre cueros y productos sin JavaScript: cada opción es un
+// link con ?ver=... y el servidor renderiza solo la sección pedida.
+templ Selector(vista string) {
+	<nav class="selector" aria-label="Elegí qué ver">
+		@opcionSelector("/?ver=cueros", "Cueros", vista == VistaCueros)
+		@opcionSelector("/?ver=productos", "Productos terminados", vista == VistaProductos)
+	</nav>
+}
+
+templ opcionSelector(href templ.SafeURL, texto string, activa bool) {
+	if activa {
+		<a href={ href } class="selector-opcion activa" aria-current="page">{ texto }</a>
+	} else {
+		<a href={ href } class="selector-opcion">{ texto }</a>
+	}
+}

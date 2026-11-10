@@ -79,6 +79,69 @@ body {
     max-width: 720px;
 }
 
+/* ---------- Catálogo de la página "Sobre nosotros" ---------- */
+
+.texto a {
+    color: var(--cuero);
+    font-weight: 600;
+}
+
+.catalogo {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin: 0 0 16px;
+}
+
+.catalogo-item {
+    padding: 14px 16px;
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-left: 4px solid var(--cuero);
+    border-radius: var(--radio);
+    box-shadow: var(--sombra);
+}
+
+.catalogo-item dt {
+    font-weight: 700;
+    color: var(--cuero-oscuro);
+}
+
+.catalogo-item dd {
+    margin: 4px 0 0;
+    color: var(--texto-suave);
+}
+
+/* ---------- Selector cueros / productos (TP5) ---------- */
+
+/* Dos links con forma de pestañas: el servidor marca la activa con .activa */
+.selector {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+}
+
+.selector-opcion {
+    padding: 8px 18px;
+    font-weight: 600;
+    text-decoration: none;
+    color: var(--cuero-oscuro);
+    background: var(--superficie);
+    border: 1px solid var(--borde);
+    border-radius: 999px;
+}
+
+.selector-opcion:hover {
+    border-color: var(--cuero);
+}
+
+.selector-opcion.activa {
+    color: #fff;
+    background: var(--cuero);
+    border-color: var(--cuero);
+}
+
 .seccion {
     margin-bottom: 48px;
     /* compensa el salto al ancla (#cueros, #productos) */
@@ -252,6 +315,11 @@ button:disabled {
     align-items: center;
     justify-content: space-between;
     gap: 8px;
+}
+
+/* El botón Eliminar va dentro de un <form> (POST sin JS): que no agregue márgenes */
+.tarjeta-pie form {
+    margin: 0;
 }
 
 .tarjeta-precio {

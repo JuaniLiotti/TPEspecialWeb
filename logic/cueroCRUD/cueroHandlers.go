@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -171,15 +170,9 @@ func (h *CueroHandler) DeleteCueroById(w http.ResponseWriter, r *http.Request, i
 		return
 	}
 
-	if err := h.repo.Delete(r.Context(), id); err != nil {
+	if err := Eliminar(r.Context(), h.repo, id); err != nil {
 		http.Error(w, "Error al eliminar el cuero", http.StatusInternalServerError)
 		return
-	}
-
-	// Las filas de cuero_imagen se borran solas (ON DELETE CASCADE),
-	// pero los archivos en disco hay que borrarlos a mano
-	if err := imagenes.BorrarCarpeta(carpetaImagenes(id)); err != nil {
-		log.Printf("No se pudieron borrar las imágenes del cuero %d: %v", id, err)
 	}
 	w.WriteHeader(http.StatusNoContent)
 }
