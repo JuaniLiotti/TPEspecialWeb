@@ -6,9 +6,8 @@ import (
 )
 
 // CueroList muestra una tarjeta por cuero, o un mensaje si no hay ninguno.
-// Genera el mismo HTML (y las mismas clases) que armaba app.js en el TP4.
 templ CueroList(cueros []cueroCRUD.Cuero) {
-	<div class="lista-tarjetas">
+	<div id="lista-cueros" class="lista-tarjetas">
 		if len(cueros) == 0 {
 			<p class="lista-vacia">Todavía no hay cueros cargados.</p>
 		}
@@ -30,10 +29,17 @@ templ CueroList(cueros []cueroCRUD.Cuero) {
 						<p class="tarjeta-detalle">{ fmt.Sprint(len(c.Imagenes)) } fotos</p>
 					}
 					<div class="tarjeta-pie">
-						<span class="tarjeta-precio">{ Precio(c.Precio) }</span>
-						<form method="post" action={ templ.URL(fmt.Sprintf("/cueros/%d/eliminar", c.ID)) }>
-							<button type="submit" class="btn-eliminar">Eliminar</button>
-						</form>
+						<span class="tarjeta-precio">{ Precio(c.Precio) }</span>	
+						<button
+							type="button"
+							class="btn-eliminar"
+							hx-delete={ fmt.Sprintf("/cueros/%d", c.ID) }
+							hx-target="closest article"
+							hx-swap="outerHTML"
+							hx-confirm="¿Estás seguro?"
+						>
+							Eliminar
+						</button>
 					</div>
 				</div>
 			</article>

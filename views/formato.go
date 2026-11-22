@@ -25,12 +25,12 @@ func ElegirVista(ver string) string {
 
 // IndexData es todo lo que necesita la página principal para renderizarse.
 // Vista indica qué sección se muestra; solo hace falta cargar la lista de esa.
+// Los formularios arrancan vacíos: los errores ya no recargan la página, los
+// devuelve el POST como fragmento (ver logic/web).
 type IndexData struct {
-	Vista        string
-	Cueros       []cueroCRUD.Cuero
-	Productos    []productCRUD.Producto
-	FormCuero    CueroFormData
-	FormProducto ProductoFormData
+	Vista     string
+	Cueros    []cueroCRUD.Cuero
+	Productos []productCRUD.Producto
 }
 
 // CueroFormData guarda lo que el usuario escribió en el formulario de cuero.
