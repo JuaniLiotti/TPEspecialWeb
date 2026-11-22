@@ -12,13 +12,12 @@ import (
 	"tpespecialweb/views"
 )
 
-// CrearCuero maneja POST /cueros (formulario "Nuevo cuero").
-//
-// Sigue el patrón Post/Redirect/Get: si todo sale bien responde con un
-// redirect 303 a GET /?ver=cueros, así el navegador pide la página de nuevo
-// (con la lista actualizada) y un F5 no vuelve a enviar el formulario.
-// Si los datos son inválidos, vuelve a mostrar la página con el error y con
-// lo que el usuario había escrito.
+// CrearCuero maneja POST /cueros (formulario "Nuevo cuero"), que llega por
+// AJAX desde HTMX. Ya no hay redirect ni se recarga la página:
+//   - si todo sale bien, responde con la lista actualizada (va al hx-target
+//     #lista-cueros) y con el formulario vacío fuera de banda (lo limpia);
+//   - si los datos son inválidos, responde solo con el formulario, con el error
+//     y lo que el usuario había escrito (HX-Retarget lo manda a #form-cuero).
 func (h *WebHandler) CrearCuero(w http.ResponseWriter, r *http.Request) {
 	// Parsear limita el tamaño y lee el multipart/form-data (campos + archivos)
 	headers, errParseo := imagenes.Parsear(w, r)
@@ -33,7 +32,7 @@ func (h *WebHandler) CrearCuero(w http.ResponseWriter, r *http.Request) {
 		Descripcion: strings.TrimSpace(r.FormValue("descripcion")),
 	}
 	if errParseo != nil {
-		h.errorCuero(w, r, http.StatusBadRequest, f, errParseo)
+		errorCuero(w, r, f, errParseo)
 		return
 	}
 
@@ -43,7 +42,7 @@ func (h *WebHandler) CrearCuero(w http.ResponseWriter, r *http.Request) {
 		err = cueroCRUD.Validate(req)
 	}
 	if err != nil {
-		h.errorCuero(w, r, http.StatusBadRequest, f, err)
+		errorCuero(w, r, f, err)
 		return
 	}
 
@@ -51,11 +50,10 @@ func (h *WebHandler) CrearCuero(w http.ResponseWriter, r *http.Request) {
 	// guardado cuando alguna foto se rechaza
 	validadas, err := imagenes.Validar(headers)
 	if err != nil {
-		status := http.StatusInternalServerError
-		if errors.Is(err, imagenes.ErrArchivoInvalido) {
-			status = http.StatusBadRequest
+		if !errors.Is(err, imagenes.ErrArchivoInvalido) {
+			log.Printf("Error al validar las imágenes del cuero: %v", err)
 		}
-		h.errorCuero(w, r, status, f, err)
+		errorCuero(w, r, f, err)
 		return
 	}
 
@@ -63,25 +61,34 @@ func (h *WebHandler) CrearCuero(w http.ResponseWriter, r *http.Request) {
 	creado, err := h.cueros.Create(r.Context(), req)
 	if err != nil {
 		log.Printf("Error al guardar el cuero: %v", err)
-		h.errorCuero(w, r, http.StatusInternalServerError, f, errors.New("no se pudo guardar el cuero"))
+		errorCuero(w, r, f, errors.New("no se pudo guardar el cuero"))
 		return
 	}
+	// El form que vuelve fuera de banda: vacío si salió todo bien
+	formNuevo := views.CueroFormData{}
 	if len(validadas) > 0 {
 		if _, err := cueroCRUD.RegistrarImagenes(r.Context(), h.cueros, creado.ID, validadas); err != nil {
 			log.Printf("Error al guardar imágenes del cuero %d: %v", creado.ID, err)
-			// El cuero ya quedó creado: se vacía el form para que no lo carguen dos veces
-			h.errorCuero(w, r, http.StatusInternalServerError, views.CueroFormData{},
-				fmt.Errorf("se guardó %q, pero no se pudieron guardar las imágenes", creado.Nombre))
-			return
+			// El cuero ya quedó creado: igual se actualiza la lista y el form vuelve
+			// vacío (para que no lo carguen dos veces), pero con el aviso
+			formNuevo.Error = capitalizar(fmt.Sprintf("se guardó %q, pero no se pudieron guardar las imágenes", creado.Nombre))
 		}
 	}
 
-	// 4. Redirect: el navegador hace GET /?ver=cueros (PRG)
-	http.Redirect(w, r, "/?ver=cueros", http.StatusSeeOther)
+	// 4. Volver a consultar la lista y devolver los dos fragmentos
+	cueros, err := h.cueros.GetAll(r.Context())
+	if err != nil {
+		log.Printf("Error al cargar la lista de cueros: %v", err)
+		http.Error(w, "Error al obtener los datos", http.StatusInternalServerError)
+		return
+	}
+	renderFragmentos(w, r, views.CueroList(cueros), views.CueroFormOOB(formNuevo))
 }
 
-// EliminarCuero maneja POST /cueros/{id}/eliminar (botón "Eliminar" de cada tarjeta).
-// Los formularios HTML solo pueden mandar GET o POST, por eso no es un DELETE.
+// EliminarCuero maneja DELETE /cueros/{id} (botón "Eliminar" de cada tarjeta,
+// que manda HTMX con hx-delete). Responde vacío con 200: HTMX reemplaza la
+// tarjeta (hx-target="closest article") por nada y desaparece. No puede ser
+// 204: con 204 HTMX 1.9 no hace el swap y la tarjeta quedaría en la página.
 func (h *WebHandler) EliminarCuero(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r.PathValue("id"))
 	if err != nil {
@@ -95,7 +102,7 @@ func (h *WebHandler) EliminarCuero(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/?ver=cueros", http.StatusSeeOther)
+	w.WriteHeader(http.StatusOK)
 }
 
 // cueroRequest convierte los textos del formulario al request que usa la lógica
@@ -119,9 +126,9 @@ func cueroRequest(f views.CueroFormData) (cueroCRUD.CueroRequest, error) {
 	}, nil
 }
 
-// errorCuero vuelve a mostrar la sección de cueros con el mensaje de error
-// en el formulario y los valores que había cargado el usuario
-func (h *WebHandler) errorCuero(w http.ResponseWriter, r *http.Request, status int, f views.CueroFormData, err error) {
+// errorCuero devuelve el formulario de cueros con el mensaje de error y los
+// valores que había cargado el usuario, para que HTMX lo ponga en #form-cuero
+func errorCuero(w http.ResponseWriter, r *http.Request, f views.CueroFormData, err error) {
 	f.Error = capitalizar(err.Error())
-	h.renderIndex(w, r, status, views.IndexData{Vista: views.VistaCueros, FormCuero: f})
+	renderErrorFormulario(w, r, "form-cuero", views.CueroForm(f))
 }

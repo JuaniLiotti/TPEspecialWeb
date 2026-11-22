@@ -69,14 +69,65 @@ body {
 
 /* ---------- Contenido ---------- */
 
+/* Sin ancho máximo: el formulario queda a la izquierda y la lista de tarjetas
+   usa todo el ancho de la pantalla. El margen lateral crece con la pantalla
+   (4% del ancho), entre 24px en celulares y 64px en monitores grandes.
+   La página "Sobre nosotros" se limita sola con .texto. */
 .contenedor {
-    max-width: 1200px;
     margin: 0 auto;
-    padding: 24px 16px 48px;
+    padding: 24px clamp(24px, 4vw, 64px) 48px;
 }
 
 .texto {
     max-width: 720px;
+}
+
+/* ---------- Galería de la página "Sobre nosotros" (Grid) ---------- */
+
+/* Tres columnas: la primera foto ocupa dos filas y las otras cuatro
+   llenan un 2 × 2 a su derecha */
+.galeria {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 20px;
+}
+
+.galeria figure {
+    position: relative;
+    margin: 0;
+    overflow: hidden;
+    border: 1px solid var(--borde);
+    border-radius: var(--radio);
+    background: var(--borde);
+}
+
+.galeria figure:first-child {
+    grid-row: span 2;
+}
+
+.galeria img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    aspect-ratio: 1 / 1;
+    object-fit: cover;
+}
+
+/* La grande no fuerza su proporción: toma el alto de las dos filas */
+.galeria figure:first-child img {
+    aspect-ratio: auto;
+}
+
+/* Epígrafe sobre la foto, con un degradé para que se lea sobre lana clara u oscura */
+.galeria figcaption {
+    position: absolute;
+    inset: auto 0 0;
+    padding: 18px 10px 8px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #fff;
+    background: linear-gradient(transparent, rgba(43, 29, 20, 0.75));
 }
 
 /* ---------- Catálogo de la página "Sobre nosotros" ---------- */
@@ -158,8 +209,8 @@ body {
 /* Layout principal con Grid: formulario a la izquierda, lista a la derecha */
 .seccion-grid {
     display: grid;
-    grid-template-columns: 300px 1fr;
-    gap: 24px;
+    grid-template-columns: 320px 1fr;
+    gap: 32px;
     align-items: start;
 }
 
@@ -317,11 +368,6 @@ button:disabled {
     gap: 8px;
 }
 
-/* El botón Eliminar va dentro de un <form> (POST sin JS): que no agregue márgenes */
-.tarjeta-pie form {
-    margin: 0;
-}
-
 .tarjeta-precio {
     font-size: 1.1rem;
     font-weight: 700;
@@ -346,5 +392,21 @@ button:disabled {
 @media (max-width: 760px) {
     .seccion-grid {
         grid-template-columns: 1fr;
+    }
+}
+
+/* En celulares la galería pasa a dos columnas y la foto grande ocupa todo el ancho */
+@media (max-width: 560px) {
+    .galeria {
+        grid-template-columns: repeat(2, 1fr);
+    }
+
+    .galeria figure:first-child {
+        grid-row: auto;
+        grid-column: 1 / -1;
+    }
+
+    .galeria figure:first-child img {
+        aspect-ratio: 4 / 3;
     }
 }

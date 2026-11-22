@@ -12,9 +12,10 @@ import (
 	"tpespecialweb/views"
 )
 
-// CrearProducto maneja POST /productos (formulario "Nuevo producto").
-// Mismo flujo que CrearCuero: validar todo, crear, guardar imágenes y
-// redirect 303 a GET /?ver=productos (Post/Redirect/Get).
+// CrearProducto maneja POST /productos (formulario "Nuevo producto") por AJAX
+// con HTMX. Mismo flujo que CrearCuero: validar todo, crear, guardar imágenes
+// y responder con la lista (#lista-productos) más el formulario vacío fuera de
+// banda; si hay un error, solo el formulario con el mensaje (#form-producto).
 func (h *WebHandler) CrearProducto(w http.ResponseWriter, r *http.Request) {
 	headers, errParseo := imagenes.Parsear(w, r)
 
@@ -26,7 +27,7 @@ func (h *WebHandler) CrearProducto(w http.ResponseWriter, r *http.Request) {
 		Descripcion: strings.TrimSpace(r.FormValue("descripcion")),
 	}
 	if errParseo != nil {
-		h.errorProducto(w, r, http.StatusBadRequest, f, errParseo)
+		errorProducto(w, r, f, errParseo)
 		return
 	}
 
@@ -43,18 +44,17 @@ func (h *WebHandler) CrearProducto(w http.ResponseWriter, r *http.Request) {
 		err = productCRUD.Validate(req)
 	}
 	if err != nil {
-		h.errorProducto(w, r, http.StatusBadRequest, f, err)
+		errorProducto(w, r, f, err)
 		return
 	}
 
 	// 2. Validar las imágenes antes de crear el producto
 	validadas, err := imagenes.Validar(headers)
 	if err != nil {
-		status := http.StatusInternalServerError
-		if errors.Is(err, imagenes.ErrArchivoInvalido) {
-			status = http.StatusBadRequest
+		if !errors.Is(err, imagenes.ErrArchivoInvalido) {
+			log.Printf("Error al validar las imágenes del producto: %v", err)
 		}
-		h.errorProducto(w, r, status, f, err)
+		errorProducto(w, r, f, err)
 		return
 	}
 
@@ -62,23 +62,30 @@ func (h *WebHandler) CrearProducto(w http.ResponseWriter, r *http.Request) {
 	creado, err := h.productos.Create(r.Context(), req)
 	if err != nil {
 		log.Printf("Error al guardar el producto: %v", err)
-		h.errorProducto(w, r, http.StatusInternalServerError, f, errors.New("no se pudo guardar el producto"))
+		errorProducto(w, r, f, errors.New("no se pudo guardar el producto"))
 		return
 	}
+	// El form que vuelve fuera de banda: vacío si salió todo bien
+	formNuevo := views.ProductoFormData{}
 	if len(validadas) > 0 {
 		if _, err := productCRUD.RegistrarImagenes(r.Context(), h.productos, creado.ID, validadas); err != nil {
 			log.Printf("Error al guardar imágenes del producto %d: %v", creado.ID, err)
-			h.errorProducto(w, r, http.StatusInternalServerError, views.ProductoFormData{},
-				fmt.Errorf("se guardó %q, pero no se pudieron guardar las imágenes", creado.Nombre))
-			return
+			formNuevo.Error = capitalizar(fmt.Sprintf("se guardó %q, pero no se pudieron guardar las imágenes", creado.Nombre))
 		}
 	}
 
-	// 4. Redirect: el navegador hace GET /?ver=productos (PRG)
-	http.Redirect(w, r, "/?ver=productos", http.StatusSeeOther)
+	// 4. Volver a consultar la lista y devolver los dos fragmentos
+	productos, err := h.productos.GetAll(r.Context())
+	if err != nil {
+		log.Printf("Error al cargar la lista de productos: %v", err)
+		http.Error(w, "Error al obtener los datos", http.StatusInternalServerError)
+		return
+	}
+	renderFragmentos(w, r, views.ProductoList(productos), views.ProductoFormOOB(formNuevo))
 }
 
-// EliminarProducto maneja POST /productos/{id}/eliminar
+// EliminarProducto maneja DELETE /productos/{id}. Igual que EliminarCuero:
+// respuesta vacía con 200 para que HTMX saque la tarjeta.
 func (h *WebHandler) EliminarProducto(w http.ResponseWriter, r *http.Request) {
 	id, err := parseID(r.PathValue("id"))
 	if err != nil {
@@ -92,11 +99,12 @@ func (h *WebHandler) EliminarProducto(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	http.Redirect(w, r, "/?ver=productos", http.StatusSeeOther)
+	w.WriteHeader(http.StatusOK)
 }
 
-// errorProducto vuelve a mostrar la sección de productos con el error y los valores cargados
-func (h *WebHandler) errorProducto(w http.ResponseWriter, r *http.Request, status int, f views.ProductoFormData, err error) {
+// errorProducto devuelve el formulario de productos con el error y los valores
+// cargados, para que HTMX lo ponga en #form-producto
+func errorProducto(w http.ResponseWriter, r *http.Request, f views.ProductoFormData, err error) {
 	f.Error = capitalizar(err.Error())
-	h.renderIndex(w, r, status, views.IndexData{Vista: views.VistaProductos, FormProducto: f})
+	renderErrorFormulario(w, r, "form-producto", views.ProductoForm(f))
 }

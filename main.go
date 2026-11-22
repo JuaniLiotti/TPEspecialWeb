@@ -87,11 +87,12 @@ func main() {
 	// "{$}" hace que matchee solo "/" exacto y no todo lo que empieza con "/".
 	http.Handle("GET /{$}", loggingMiddleware(http.HandlerFunc(webHandler.Index)))
 
-	// Formularios HTML clásicos (POST + redirect a GET /, patrón PRG)
+	// Rutas que usa HTMX desde la página (TP6): responden con fragmentos de
+	// HTML en vez de redirigir. Alta desde el formulario y baja desde la tarjeta.
 	http.Handle("POST /cueros", loggingMiddleware(http.HandlerFunc(webHandler.CrearCuero)))
 	http.Handle("POST /productos", loggingMiddleware(http.HandlerFunc(webHandler.CrearProducto)))
-	http.Handle("POST /cueros/{id}/eliminar", loggingMiddleware(http.HandlerFunc(webHandler.EliminarCuero)))
-	http.Handle("POST /productos/{id}/eliminar", loggingMiddleware(http.HandlerFunc(webHandler.EliminarProducto)))
+	http.Handle("DELETE /cueros/{id}", loggingMiddleware(http.HandlerFunc(webHandler.EliminarCuero)))
+	http.Handle("DELETE /productos/{id}", loggingMiddleware(http.HandlerFunc(webHandler.EliminarProducto)))
 
 	// Archivos estáticos (styles.css, about.html) y 404 para todo lo demás
 	http.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

@@ -13,6 +13,8 @@ import (
 	"unicode"
 	"unicode/utf8"
 
+	"github.com/a-h/templ"
+
 	"tpespecialweb/logic/cueroCRUD"
 	"tpespecialweb/logic/productCRUD"
 	"tpespecialweb/views"
@@ -28,16 +30,12 @@ func NewWebHandler(productos productCRUD.ProductRepository, cueros cueroCRUD.Cue
 }
 
 // Index maneja GET /. El parámetro ?ver=cueros|productos elige qué sección
-// muestra el selector (por defecto, cueros).
+// muestra el selector (por defecto, cueros). Es la única ruta que devuelve la
+// página completa: los formularios (TP6) responden solo con fragmentos.
 func (h *WebHandler) Index(w http.ResponseWriter, r *http.Request) {
 	data := views.IndexData{Vista: views.ElegirVista(r.URL.Query().Get("ver"))}
-	h.renderIndex(w, r, http.StatusOK, data)
-}
 
-// renderIndex carga de la BD solo la lista de la vista elegida y renderiza la
-// página completa. Recibe el status para poder reusarla cuando un formulario
-// viene con errores (400) y hay que volver a mostrar la página.
-func (h *WebHandler) renderIndex(w http.ResponseWriter, r *http.Request, status int, data views.IndexData) {
+	// Carga de la BD solo la lista de la vista elegida
 	var err error
 	if data.Vista == views.VistaProductos {
 		data.Productos, err = h.productos.GetAll(r.Context())
@@ -50,18 +48,45 @@ func (h *WebHandler) renderIndex(w http.ResponseWriter, r *http.Request, status 
 		return
 	}
 
+	renderFragmentos(w, r, views.IndexPage(data))
+}
+
+// ---------------------------------------------------------------------
+// Respuestas para HTMX (TP6)
+// ---------------------------------------------------------------------
+
+// renderFragmentos escribe uno o más componentes, uno detrás del otro, como
+// respuesta HTML. Después de un alta se mandan dos: la lista (que va al
+// hx-target) y el formulario con hx-swap-oob (que HTMX ubica por su id).
+func renderFragmentos(w http.ResponseWriter, r *http.Request, componentes ...templ.Component) {
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-	w.WriteHeader(status)
-	if err := views.IndexPage(data).Render(r.Context(), w); err != nil {
-		log.Printf("Error al renderizar la página principal: %v", err)
+	for _, c := range componentes {
+		if err := c.Render(r.Context(), w); err != nil {
+			log.Printf("Error al renderizar la respuesta: %v", err)
+			return
+		}
 	}
+}
+
+// renderErrorFormulario devuelve solo el formulario (con el error y lo que
+// había cargado el usuario) y le indica a HTMX que lo ponga en lugar del
+// formulario de la página, en vez de en la lista que dice el hx-target:
+//   - HX-Retarget: nuevo destino del swap (selector CSS)
+//   - HX-Reswap:   nueva forma de hacer el swap
+//
+// Responde 200 a propósito: HTMX 1.9 no hace el swap de respuestas 4xx/5xx,
+// y para cambiar eso habría que escribir JavaScript.
+func renderErrorFormulario(w http.ResponseWriter, r *http.Request, idForm string, form templ.Component) {
+	w.Header().Set("HX-Retarget", "#"+idForm)
+	w.Header().Set("HX-Reswap", "outerHTML")
+	renderFragmentos(w, r, form)
 }
 
 // ---------------------------------------------------------------------
 // Utilidades para leer los formularios
 // ---------------------------------------------------------------------
 
-// parseID lee el {id} de rutas como /cueros/{id}/eliminar
+// parseID lee el {id} de rutas como DELETE /cueros/{id}
 func parseID(idStr string) (int32, error) {
 	id, err := strconv.ParseInt(idStr, 10, 32)
 	if err != nil || id <= 0 {

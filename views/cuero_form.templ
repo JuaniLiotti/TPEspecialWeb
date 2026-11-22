@@ -1,10 +1,24 @@
 package views
 
-// CueroForm es el formulario de alta de cueros. Hace un POST clásico a /cueros
-// (multipart/form-data porque puede llevar imágenes). Si el servidor rechaza
-// los datos, vuelve a renderizarlo con los valores cargados y el error.
-templ CueroForm(f CueroFormData) {
-	<form class="formulario" method="post" action="/cueros" enctype="multipart/form-data">
+// El id="form-cuero" sirve para dos cosas:
+//   - si el servidor rechaza los datos, responde con HX-Retarget: #form-cuero y
+//     este formulario vuelve con el error y los valores cargados;
+//   - si oob es true, se agrega hx-swap-oob="true" y HTMX lo usa como swap fuera
+//     de banda: reemplaza el formulario de la página (así se limpian los campos).
+templ cueroForm(f CueroFormData, oob bool) {
+	<form
+		id="form-cuero"
+		if oob {
+			hx-swap-oob="true"
+		}
+		class="formulario"
+		method="post"
+		action="/cueros"
+		enctype="multipart/form-data"
+		hx-post="/cueros"
+		hx-target="#lista-cueros"
+		hx-swap="outerHTML"
+	>
 		<h3>Nuevo cuero</h3>
 		<label>
 			Nombre
@@ -43,4 +57,16 @@ templ CueroForm(f CueroFormData) {
 		}
 		<button type="submit">Agregar cuero</button>
 	</form>
+}
+
+// CueroForm es el formulario normal: el de la página principal y el que se
+// devuelve con un error de validación.
+templ CueroForm(f CueroFormData) {
+	@cueroForm(f, false)
+}
+
+// CueroFormOOB es el formulario que acompaña a la lista después de un alta:
+// HTMX lo intercambia por el #form-cuero de la página (vacío, o con un aviso).
+templ CueroFormOOB(f CueroFormData) {
+	@cueroForm(f, true)
 }

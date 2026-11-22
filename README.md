@@ -1,4 +1,4 @@
-# Italpiel S.A. - Tienda de cueros
+# Italpiel S.A. - Interfaces dinámicas con HTMX
 
 Italpiel S.A. es una plataforma para una tienda de la industria del cuero. La tienda se organiza en dos categorías:
 * **Cueros:** cueros en sí mismos, como materia prima (vaquetas, cueros ovinos, etc.).
@@ -9,7 +9,7 @@ El proyecto es una aplicación web en Go que administra el catálogo. Permite ge
 * **Productos:** nombre, descripción, categoría, color, precio y una o más imágenes.
 * **Usuarios:** nombre, email y contraseña (solo por la API).
 
-Usa PostgreSQL como base de datos (con `sqlc` para el acceso tipado), `templ` para generar las vistas HTML en el servidor, y Docker + Make para automatizar todo el entorno.
+Usa PostgreSQL como base de datos (con `sqlc` para el acceso tipado), `templ` para generar las vistas HTML en el servidor, HTMX para actualizarlas sin recargar la página, y Docker + Make para automatizar todo el entorno.
 
 ## Cómo ejecutarlo
 
@@ -52,110 +52,59 @@ Después abrir **http://localhost:8080**. Para cortar la aplicación: **Ctrl+C**
 | `make db` | Levanta una BBDD nueva y vacía en Docker |
 | `make clean` | Limpia todo: servidor en segundo plano, BBDD, imágenes subidas y binario |
 
-## Uso de la página (TP5: renderizado en el servidor)
+## TP6: interfaces dinámicas con HTMX
 
-La página principal se genera en el servidor con `templ`. No usa JavaScript: el servidor arma el HTML completo con los datos de la base y los formularios se envían con un POST clásico.
+En el TP5 la página se armaba en el servidor con `templ`, pero cada alta o baja era un formulario clásico: `POST` + redirect `303` + recarga completa de la página (patrón Post/Redirect/Get). En el TP6 se incorpora [HTMX](https://htmx.org): los formularios y los botones envían el pedido por AJAX, el servidor responde **solo con el fragmento de HTML que cambió** (renderizado con los mismos componentes `templ`) y HTMX lo coloca en el lugar indicado. La página no se recarga y no se escribe JavaScript propio.
 
-- **Selector Cueros / Productos terminados:** son dos links (`/?ver=cueros` y `/?ver=productos`). El servidor renderiza solo la sección elegida y consulta en la base solo esa lista.
-- **Alta:** cada sección tiene un formulario (con imágenes opcionales) que hace `POST /cueros` o `POST /productos`. Si los datos son válidos, el servidor guarda el registro y responde con un redirect `303` a la página principal: es el patrón **Post/Redirect/Get**, así que recargar la página no vuelve a enviar el formulario. Si hay un error (precio inválido, archivo que no es imagen, etc.), se vuelve a mostrar el formulario con el mensaje y con los datos cargados.
-- **Eliminar:** cada tarjeta tiene un botón que hace `POST /cueros/{id}/eliminar` o `POST /productos/{id}/eliminar`, y también redirige a la página principal.
+### 1. Integración de HTMX
+
+En `views/layout.templ` se agregó el script de HTMX en el `<head>`, así queda disponible en todas las vistas que usan el `Layout`:
+
+```html
+<script src="https://unpkg.com/htmx.org@1.9.10"></script>
+```
+
+### 2. Creación sin recarga de página
+
+**Lista** (`views/cuero_list.templ`, `views/producto_list.templ`): el contenedor de las tarjetas tiene un `id` (`lista-cueros` / `lista-productos`) para que HTMX pueda ubicarlo.
+
+**Formulario** (`views/cuero_form.templ`, `views/producto_form.templ`): el `<form>` tiene los atributos de HTMX:
+
+```html
+<form id="form-cuero" enctype="multipart/form-data"
+      hx-post="/cueros" hx-target="#lista-cueros" hx-swap="outerHTML">
+```
+
+**Handler** `POST /cueros` y `POST /productos` (`logic/web/cueros.go`, `logic/web/productos.go`): se eliminó el `http.Redirect`. Después de crear el registro (y guardar sus imágenes) se vuelve a consultar la lista completa y se responde con dos fragmentos:
+
+1. La lista actualizada (`views.CueroList`), que va al `hx-target`.
+2. El formulario vacío con `hx-swap-oob="true"` (`views.CueroFormOOB`). Es un *Out-of-Band swap*: HTMX lo saca de la respuesta, busca en la página el elemento con el mismo `id` (`form-cuero`) y lo reemplaza, así **se limpian los campos** después de un alta exitosa.
+
+**Errores de validación** (precio inválido, archivo que no es imagen, etc.): el servidor responde **solo con el formulario**, con el mensaje de error y los datos que había cargado el usuario, y agrega dos headers de respuesta de HTMX:
+
+| Header | Valor | Efecto |
+|---|---|---|
+| `HX-Retarget` | `#form-cuero` | El fragmento va al formulario en lugar de la lista |
+| `HX-Reswap` | `outerHTML` | Reemplaza el formulario entero |
+
+### 3. Borrado sin recarga de página
+
+**Botón** (`views/cuero_list.templ`, `views/producto_list.templ`): el formulario `POST /cueros/{id}/eliminar` del TP5 se reemplazó por un botón con atributos de HTMX:
+
+```html
+<button hx-delete="/cueros/5"
+        hx-target="closest article"
+        hx-swap="outerHTML"
+        hx-confirm="¿Estás seguro?">Eliminar</button>
+```
+
+### Rutas de la página
 
 | Ruta | Descripción |
 |---|---|
-| `GET /` | Página principal (`?ver=cueros` o `?ver=productos`) |
-| `POST /cueros`, `POST /productos` | Alta desde el formulario (`multipart/form-data`) |
-| `POST /cueros/{id}/eliminar`, `POST /productos/{id}/eliminar` | Baja desde la tarjeta |
-| `GET /about.html` | Página estática "Sobre nosotros" |
-| `GET /uploads/...` | Archivos de imagen subidos |
+| `GET /` | Página principal completa (`?ver=cueros` o `?ver=productos`) |
+| `POST /cueros`, `POST /productos` | Alta por HTMX (`multipart/form-data`). Responde con la lista y el formulario vacío (OOB), o con el formulario con el error |
+| `DELETE /cueros/{id}`, `DELETE /productos/{id}` | Baja por HTMX. Responde vacío con `200` |
 
-Las reglas de validación son las mismas para los formularios y para la API (funciones `Validate` de `logic/cueroCRUD` y `logic/productCRUD`).
+Las rutas `POST /cueros/{id}/eliminar` y `POST /productos/{id}/eliminar` del TP5 se eliminaron. La API JSON bajo `/api/` no cambió.
 
-### Estructura del proyecto
-
-```
-main.go                 Conexión a la BBDD y registro de rutas
-views/                  Componentes templ (layout, listas, formularios, página principal)
-logic/web/              Handlers de las páginas HTML y de los formularios
-logic/cueroCRUD/        Lógica y API JSON de cueros
-logic/productCRUD/      Lógica y API JSON de productos
-logic/userCRUD/         Lógica y API JSON de usuarios
-logic/imagenes/         Subida, validación y borrado de imágenes
-db/                     Adaptadores entre la lógica y el código de sqlc
-db/schema/, db/queries/ Esquema y consultas SQL (entrada de sqlc)
-static/                 styles.css, about.html y notfound.html
-```
-
-## Tests automatizados
-
-### Tests de la base de datos: `make test`
-1. Genera el código con `sqlc` y `templ`.
-2. Levanta un contenedor de PostgreSQL con el esquema inicial.
-3. Ejecuta `go test`, que recorre el ciclo CRUD completo de usuarios, productos, cueros y sus imágenes (incluyendo el borrado en cascada).
-4. Elimina el contenedor y sus volúmenes.
-
-### Tests de la API: `make test-api`
-1. Genera el código y compila la aplicación (`api-server`).
-2. Levanta un contenedor de PostgreSQL con el esquema inicial.
-3. Arranca el servidor en segundo plano (puerto 8080) y espera a que responda.
-4. Ejecuta `requests.sh`, que hace peticiones HTTP reales (POST, GET, PUT, DELETE) contra la API, incluyendo la subida de imágenes de prueba (carpeta `testdata/`) y casos de error (`400`, `404`).
-5. Mata el servidor y elimina el contenedor, sus volúmenes y las imágenes subidas.
-
-## API JSON
-
-Además de las páginas HTML, el servidor mantiene la API REST de los TPs anteriores. Todos sus endpoints están bajo el prefijo `/api/`.
-
-La API valida la entrada de datos mediante DTOs propios y funciones de validación en la capa de lógica, y maneja códigos de estado HTTP estándar (`200 OK`, `201 Created`, `204 No Content`, `400 Bad Request`, `404 Not Found`).
-
-### Cueros (`/api/cueros/`)
-- `GET /api/cueros/`: Lista todos los cueros.
-- `GET /api/cueros/{id}`: Obtiene un cuero por ID.
-- `POST /api/cueros/`: Crea un cuero.
-- `PUT /api/cueros/{id}`: Actualiza un cuero por ID.
-- `DELETE /api/cueros/{id}`: Elimina un cuero.
-
-Ejemplo de cuerpo JSON:
-```json
-{"nombre": "Vaqueta Natural", "tipo": "Vacuno", "acabado": "Curtido vegetal", "color": "Suela", "espesor_mm": 2.5, "descripcion": "Cuero entero", "precio": 120000}
-```
-
-### Productos (`/api/products/`)
-- `GET /api/products/`: Lista todos los productos.
-- `GET /api/products/{id}`: Obtiene un producto por ID.
-- `POST /api/products/`: Crea un producto.
-- `PUT /api/products/{id}`: Actualiza un producto por ID.
-- `DELETE /api/products/{id}`: Elimina un producto.
-
-Ejemplo de cuerpo JSON:
-```json
-{"nombre": "Cartera de Cuero", "descripcion": "100% cuero natural", "categoria": "Accesorios", "color": "Marrón", "precio": 45000}
-```
-
-### Imágenes de cueros y productos
-Cada cuero y cada producto puede tener una o más imágenes. Los archivos se guardan en disco, en la carpeta `uploads/`, y en la base de datos solo se guarda su URL. Las respuestas `GET` de cueros y productos incluyen el campo `imagenes`; la primera imagen de la lista es la portada:
-```json
-"imagenes": [{"id": 1, "url": "/uploads/productos/1/b88b6d9c91b95cd82fca167c343f4333.png"}]
-```
-
-- `POST /api/products/{id}/imagenes`: Sube una o más imágenes al producto. Responde `201` con las imágenes creadas.
-- `DELETE /api/products/{id}/imagenes/{imgId}`: Elimina una imagen del producto (fila y archivo). Responde `204`.
-- `POST /api/cueros/{id}/imagenes` y `DELETE /api/cueros/{id}/imagenes/{imgId}`: Lo mismo para cueros.
-
-La subida se hace como `multipart/form-data`, con los archivos en el campo `imagenes`:
-```bash
-curl -X POST http://localhost:8080/api/products/1/imagenes \
-    -F "imagenes=@foto1.jpg" -F "imagenes=@foto2.png"
-```
-
-Reglas de validación (también se aplican a las imágenes de los formularios HTML):
-- Solo se aceptan imágenes JPG, PNG o WebP. El tipo se detecta por el contenido del archivo, no por su extensión.
-- Máximo 10 MB por request.
-- El servidor genera el nombre de cada archivo (nunca usa el nombre original).
-
-Al eliminar un cuero o un producto se borran también sus imágenes: las filas, por `ON DELETE CASCADE`, y los archivos de su carpeta.
-
-### Usuarios (`/api/users/`)
-- `GET /api/users/`: Lista todos los usuarios.
-- `GET /api/users/{id}`: Obtiene un usuario por ID.
-- `POST /api/users/`: Crea un usuario.
-- `PUT /api/users/{id}`: Actualiza un usuario por ID.
-- `DELETE /api/users/{id}`: Elimina un usuario.

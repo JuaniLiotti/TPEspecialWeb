@@ -1,9 +1,21 @@
 package views
 
-// ProductoForm es el formulario de alta de productos. Hace un POST clásico a
-// /productos (multipart/form-data porque puede llevar imágenes).
-templ ProductoForm(f ProductoFormData) {
-	<form class="formulario" method="post" action="/productos" enctype="multipart/form-data">
+// productoForm es el formulario de alta de productos. Funciona igual que cueroForm
+
+templ productoForm(f ProductoFormData, oob bool) {
+	<form
+		id="form-producto"
+		if oob {
+			hx-swap-oob="true"
+		}
+		class="formulario"
+		method="post"
+		action="/productos"
+		enctype="multipart/form-data"
+		hx-post="/productos"
+		hx-target="#lista-productos"
+		hx-swap="outerHTML"
+	>
 		<h3>Nuevo producto</h3>
 		<label>
 			Nombre
@@ -34,4 +46,14 @@ templ ProductoForm(f ProductoFormData) {
 		}
 		<button type="submit">Agregar producto</button>
 	</form>
+}
+
+// ProductoForm es el formulario normal (página principal y respuesta con error)
+templ ProductoForm(f ProductoFormData) {
+	@productoForm(f, false)
+}
+
+// ProductoFormOOB acompaña a la lista después de un alta y limpia el formulario
+templ ProductoFormOOB(f ProductoFormData) {
+	@productoForm(f, true)
 }

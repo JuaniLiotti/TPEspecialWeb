@@ -3,13 +3,13 @@ package views
 // IndexPage es la página principal. Arriba va el selector y abajo solo la
 // sección elegida (cueros o productos), con su formulario y su lista.
 templ IndexPage(data IndexData) {
-	@Layout("Italpiel - Tienda de cueros") {
+	@Layout("Italpiel") {
 		@Selector(data.Vista)
 		if data.Vista == VistaProductos {
 			<section id="productos" class="seccion">
 				<h2>Productos terminados</h2>
 				<div class="seccion-grid">
-					@ProductoForm(data.FormProducto)
+					@ProductoForm(ProductoFormData{})
 					@ProductoList(data.Productos)
 				</div>
 			</section>
@@ -17,7 +17,7 @@ templ IndexPage(data IndexData) {
 			<section id="cueros" class="seccion">
 				<h2>Cueros</h2>
 				<div class="seccion-grid">
-					@CueroForm(data.FormCuero)
+					@CueroForm(CueroFormData{})
 					@CueroList(data.Cueros)
 				</div>
 			</section>
